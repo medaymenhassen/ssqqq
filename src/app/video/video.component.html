@@ -1,0 +1,121 @@
+
+<div class="video-container">
+  <header class="video-header">
+    <div class="header-content">
+      <h1>🎯 Tracker Corporel en Temps Réel</h1>
+      <p>Analyse avancée de la posture, du visage et des mains</p>
+    </div>
+    <div class="header-stats">
+      <div class="stat-item">
+        <span class="stat-label">FPS</span>
+        <span class="stat-value">{{ fps }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Status</span>
+        <span class="stat-value">{{ isTracking ? '🔴 LIVE' : '⚫ IDLE' }}</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <section class="video-section">
+      <div class="video-wrapper">
+        <video #videoElement class="video-stream" playsinline (play)="isVideoInitialized = true"></video>
+        <div class="fps-indicator" *ngIf="isTracking">
+          <span class="fps-badge">{{ fps }} FPS</span>
+          <span class="recording-dot"></span>
+        </div>
+        <div class="error-message" *ngIf="errorMessage">
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+
+      <div class="video-controls">
+        <button class="btn btn-primary" *ngIf="!isVideoInitialized" (click)="startCamera()">
+          ▶️ Démarrer
+        </button>
+        <button class="btn btn-secondary" *ngIf="isVideoInitialized" (click)="stopCamera()">
+          ⏹️ Arrêter
+        </button>
+      </div>
+    </section>
+
+    <section class="analysis-section">
+      <h2>📊 Résultats de l'Analyse</h2>
+
+      <div class="analysis-grid">
+        <!-- Posture -->
+        <div class="analysis-card posture-card">
+          <h3>📍 Analyse Posture</h3>
+          <div class="confidence-bar">
+            <div class="confidence-fill" [style.width.%]="getPoseConfidence()">
+              {{ getPoseConfidence() }}%
+            </div>
+          </div>
+          <div class="status-text">{{ getPoseStatus() }}</div>
+          <div class="details" *ngIf="bodyAnalysis?.pose">
+            <p class="detail-item">{{ getPoseDetails() }}</p>
+          </div>
+          <div class="no-data" *ngIf="!bodyAnalysis?.pose">Pas de pose</div>
+        </div>
+
+        <!-- Visage -->
+        <div class="analysis-card face-card">
+          <h3>😊 Analyse Visage</h3>
+          <div class="status-text">{{ getFaceStatus() }}</div>
+          <div class="expression" *ngIf="bodyAnalysis?.face">
+            <p>Expression: <strong>{{ getFaceExpression() }}</strong></p>
+          </div>
+          <div class="no-data" *ngIf="!bodyAnalysis?.face">Aucune donnée</div>
+        </div>
+
+        <!-- Mains -->
+        <div class="analysis-card hands-card">
+          <h3>👋 Analyse Mains</h3>
+          <div class="status-text">{{ getHandsStatus() }}</div>
+          <div class="gestures" *ngIf="bodyAnalysis?.hands?.left || bodyAnalysis?.hands?.right">
+            <p>Gestes: <strong>{{ getHandsGestures() }}</strong></p>
+          </div>
+          <div class="no-data" *ngIf="!bodyAnalysis?.hands?.left && !bodyAnalysis?.hands?.right">
+            Aucune main
+          </div>
+        </div>
+
+        <!-- Système -->
+        <div class="analysis-card system-card">
+          <h3>📊 État du Système</h3>
+          <div class="system-status">
+            <div class="status-row">
+              <span class="status-key">Caméra</span>
+              <span class="status-value">{{ getSystemStatus().camera }}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-key">Analyse</span>
+              <span class="status-value">{{ getSystemStatus().analysis }}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-key">FPS</span>
+              <span class="status-value">{{ getSystemStatus().fps }}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-key">Pose</span>
+              <span class="status-value">{{ getSystemStatus().posture }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="video-footer">
+    <div class="info-box">
+      <p>
+        <strong>Confiance Posture:</strong> {{ getPoseConfidence() }}% | 
+        <strong>Confiance Visage:</strong> {{ getFaceConfidence() }}%
+      </p>
+      <p>
+        <a routerLink="/data" class="data-link">📊 Voir les données capturées</a>
+      </p>
+    </div>
+  </footer>
+</div>

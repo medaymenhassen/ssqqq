@@ -1,0 +1,50 @@
+<div class="user-type-list-container">
+  <div class="header">
+    <h2>Types d'Utilisateurs</h2>
+    <button class="btn btn-primary" (click)="createUserType()">Créer un Type</button>
+  </div>
+
+  <div class="loading" *ngIf="loading">
+    <div class="spinner-border" role="status">
+      <span class="sr-only">Chargement...</span>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="error">
+    <div class="alert alert-danger">{{ error }}</div>
+    <button class="btn btn-secondary" (click)="loadUserTypes()">Réessayer</button>
+  </div>
+
+  <div class="user-type-table" *ngIf="!loading && !error">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nom</th>
+          <th>Description</th>
+          <th>Type Spécial</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let userType of userTypes">
+          <td>{{ userType.id }}</td>
+          <td>{{ userType.nom }}</td>
+          <td>{{ userType.description }}</td>
+          <td>
+            <span class="badge" [class.badge-success]="userType.special" [class.badge-secondary]="!userType.special">
+              {{ userType.special ? 'Spécial' : 'Normal' }}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" (click)="editUserType(userType.id)">Modifier</button>
+            <button class="btn btn-sm btn-outline-danger" (click)="deleteUserType(userType.id)">Supprimer</button>
+          </td>
+        </tr>
+        <tr *ngIf="userTypes.length === 0">
+          <td colspan="5" class="text-center">Aucun type d'utilisateur trouvé</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

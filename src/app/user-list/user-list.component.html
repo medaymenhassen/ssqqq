@@ -1,0 +1,37 @@
+<div class="user-list-container">
+  <h2>Liste des Utilisateurs</h2>
+
+  <div class="user-table">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Prénom</th>
+          <th>Nom</th>
+          <th>Email</th>
+          <th>Rôle</th>
+          <th>Statut</th>
+          <th>Date de création</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users">
+          <td>{{ user.id }}</td>
+          <td>{{ user.firstname }}</td>
+          <td>{{ user.lastname }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.role }}</td>
+          <td>
+            <span class="badge" [class.badge-success]="user.enabled" [class.badge-danger]="!user.enabled">
+              {{ user.enabled ? 'Actif' : 'Inactif' }}
+            </span>
+          </td>
+          <td>{{ user.createdAt | date:'short' }}</td>
+        </tr>
+        <tr *ngIf="users.length === 0">
+          <td colspan="7" class="text-center">Aucun utilisateur trouvé</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

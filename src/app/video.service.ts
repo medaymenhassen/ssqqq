@@ -1,0 +1,633 @@
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+
+// Modern MediaPipe Tasks API
+import * as Kalidokit from 'kalidokit';
+import {
+  PoseLandmarker,
+  FaceLandmarker,
+  HandLandmarker,
+  FilesetResolver,
+  HolisticLandmarker,
+  DrawingUtils,
+  Landmark
+} from '@mediapipe/tasks-vision';
+
+// For drawing utilities
+import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+
+import { Camera } from '@mediapipe/camera_utils';
+
+export interface PoseData {
+  [key: string]: {
+    position?: { x: number; y: number; z?: number };
+    rotation?: { x: number; y: number; z: number; w?: number };
+    confidence?: number;
+  };
+}
+
+export interface FaceData {
+  Head?: {
+    position?: { x: number; y: number; z: number };
+    rotation?: { x: number; y: number; z: number };
+  };
+  mouth_open?: number;
+  eye_blink_left?: number;
+  eye_blink_right?: number;
+  eye_look_left?: number;
+  eye_look_right?: number;
+}
+
+export interface HandData {
+  landmarks?: any[];
+  handedness?: string;
+  gesture?: string;
+}
+
+export interface BodyAnalysis {
+  pose: PoseData | null;
+  face: FaceData | null;
+  hands: {
+    left: HandData | null;
+    right: HandData | null;
+  };
+  isAnalyzing: boolean;
+  poseConfidence?: number;
+  faceConfidence?: number;
+  handsDetected?: { left: boolean; right: boolean };
+  bodyMetrics?: {
+    posture: string;
+    faceExpression: string;
+    leftGesture: string;
+    rightGesture: string;
+  };
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class VideoService {
+  private bodyAnalysisSubject = new BehaviorSubject<BodyAnalysis>({
+    pose: null,
+    face: null,
+    hands: { left: null, right: null },
+    isAnalyzing: false,
+    poseConfidence: 0,
+    faceConfidence: 0,
+    handsDetected: { left: false, right: false },
+    bodyMetrics: {
+      posture: 'Neutre',
+      faceExpression: 'Neutre',
+      leftGesture: 'Aucun',
+      rightGesture: 'Aucun'
+    }
+  });
+
+  public bodyAnalysis$: Observable<BodyAnalysis> = this.bodyAnalysisSubject.asObservable();
+
+  private holistic: HolisticLandmarker | null = null;
+  private poseDetector: PoseLandmarker | null = null;
+  private faceDetector: FaceLandmarker | null = null;
+  private handDetector: HandLandmarker | null = null;
+  private mpCamera: Camera | null = null;
+  private kalidokit = Kalidokit;
+
+  constructor() {}
+
+  async initializeMediaPipe(): Promise<void> {
+    console.log('🔄 Initializing MediaPipe...');
+    
+    // Only initialize MediaPipe in browser environment
+    if (typeof window === 'undefined') {
+      console.log('⏭️ Skipping MediaPipe initialization in server environment');
+      return;
+    }
+    
+    if (this.holistic) return;
+
+    try {
+      // Use the latest version and a more reliable model path
+      const filesetResolver = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+      );
+
+      // Skip holistic and go directly to individual detectors
+      console.log('⏭️ Utilisation directe des détecteurs individuels');
+      await this.initializeIndividualDetectors(filesetResolver);
+    } catch (error) {
+      console.error('❌ Erreur initialisation MediaPipe:', error);
+    }
+  }
+
+  private async initializeIndividualDetectors(filesetResolver: any): Promise<void> {
+    try {
+      // Initialize pose detector
+      this.poseDetector = await PoseLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task',
+        },
+        runningMode: 'VIDEO',
+        numPoses: 1
+      });
+      console.log('✅ Pose detector initialized:', !!this.poseDetector);
+
+      // Initialize face detector
+      this.faceDetector = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        },
+        runningMode: 'VIDEO'
+      });
+      console.log('✅ Face detector initialized:', !!this.faceDetector);
+
+      // Initialize hand detectors
+      this.handDetector = await HandLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        },
+        runningMode: 'VIDEO',
+        numHands: 2
+      });
+      console.log('✅ Hand detector initialized:', !!this.handDetector);
+
+      console.log('✅ Détecteurs individuels initialisés');
+    } catch (error) {
+      console.error('❌ Erreur initialisation détecteurs individuels:', error);
+      // Even if individual detectors fail, we can still notify the UI
+      this.updateAnalysis({ 
+        isAnalyzing: false, 
+        poseConfidence: 0, 
+        faceConfidence: 0, 
+        handsDetected: { left: false, right: false } 
+      });
+    }
+  }
+
+  async setupHolistic(videoElement: HTMLVideoElement): Promise<void> {
+    console.log('🎬 Setting up holistic with video element:', videoElement);
+    
+    // Only setup in browser environment
+    if (typeof window === 'undefined') {
+      console.log('⏭️ Skipping holistic setup in server environment');
+      return;
+    }
+    
+    try {
+      if (!this.poseDetector && !this.faceDetector && !this.handDetector) {
+        await this.initializeMediaPipe();
+      }
+
+      // Check if any detector is available
+      if (!this.poseDetector && !this.faceDetector && !this.handDetector) {
+        throw new Error('Aucun détecteur initialisé');
+      }
+
+      // Start camera
+      this.mpCamera = new Camera(videoElement, {
+        onFrame: async () => {
+          if ((this.poseDetector || this.faceDetector || this.handDetector) && 
+              videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+            try {
+              // Use individual detectors
+              await this.detectWithIndividualDetectors(videoElement);
+            } catch (e) {
+              console.error('Erreur dans onFrame:', e);
+            }
+          }
+        },
+        width: 1280,
+        height: 720
+      });
+
+      this.mpCamera.start();
+      console.log("Détecteurs démarrés !");
+    } catch (error) {
+      console.error('❌ Erreur setup détecteurs:', error);
+      // Notify the UI that tracking is not available
+      this.updateAnalysis({ 
+        isAnalyzing: false, 
+        poseConfidence: 0, 
+        faceConfidence: 0, 
+        handsDetected: { left: false, right: false } 
+      });
+    }
+  }
+
+  private async detectWithIndividualDetectors(videoElement: HTMLVideoElement): Promise<void> {
+    console.log('🔍 Detecting with individual detectors...');
+    const results: any = {};
+    
+    try {
+      // Detect pose
+      if (this.poseDetector) {
+        console.log('🔍 Detecting pose...');
+        const poseResults = await this.poseDetector.detectForVideo(videoElement, performance.now());
+        console.log('🔍 Pose results:', poseResults);
+        console.log('🔍 Pose landmarks length:', poseResults.landmarks?.length);
+        console.log('🔍 Pose world landmarks length:', poseResults.worldLandmarks?.length);
+        if (poseResults.landmarks && poseResults.landmarks.length > 0) {
+          console.log('🔍 Pose landmarks count:', poseResults.landmarks.length);
+          console.log('🔍 First landmark:', poseResults.landmarks[0]);
+          results.poseLandmarks = poseResults.landmarks;
+          results.poseWorldLandmarks = poseResults.worldLandmarks;
+        } else {
+          console.log('🔍 No pose landmarks detected');
+        }
+      }
+      
+      // Detect face
+      if (this.faceDetector) {
+        console.log('🔍 Detecting face...');
+        const faceResults = await this.faceDetector.detectForVideo(videoElement, performance.now());
+        console.log('🔍 Face results:', faceResults);
+        console.log('🔍 Face landmarks length:', faceResults.faceLandmarks?.length);
+        if (faceResults.faceLandmarks && faceResults.faceLandmarks.length > 0) {
+          console.log('🔍 Face landmarks count:', faceResults.faceLandmarks.length);
+          console.log('🔍 First face landmark:', faceResults.faceLandmarks[0]);
+          results.faceLandmarks = faceResults.faceLandmarks[0];
+        }
+      }
+      
+      // Detect hands
+      if (this.handDetector) {
+        console.log('🔍 Detecting hands...');
+        const handResults = await this.handDetector.detectForVideo(videoElement, performance.now());
+        console.log('🔍 Hand results:', handResults);
+        console.log('🔍 Hand landmarks length:', handResults.landmarks?.length);
+        console.log('🔍 Hand handednesses length:', handResults.handednesses?.length);
+        if (handResults.landmarks && handResults.landmarks.length > 0) {
+          // Separate left and right hands based on x position
+          handResults.landmarks.forEach((landmarks: any, index: number) => {
+            if (handResults.handednesses && handResults.handednesses[index]) {
+              const handedness = handResults.handednesses[index][0].categoryName;
+              console.log('🔍 Hand', index, 'handedness:', handedness);
+              if (handedness === 'Left') {
+                results.leftHandLandmarks = landmarks;
+              } else if (handedness === 'Right') {
+                results.rightHandLandmarks = landmarks;
+              }
+            }
+          });
+        }
+      }
+      
+      console.log('🔍 Detection complete, processing results...', results);
+      this.processResults(results);
+    } catch (error) {
+      console.error('❌ Erreur détection individuelle:', error);
+      this.updateAnalysis({ isAnalyzing: false });
+    }
+  }
+
+  private processResults(results: any): void {
+    console.log('🔄 Processing results:', results);
+    if (!results) {
+      console.log('🔄 No results to process');
+      return;
+    }
+
+    try {
+      this.updateAnalysis({ isAnalyzing: true });
+
+      let poseData: PoseData | null = null;
+      let poseConfidence = 0;
+      let leftHand: HandData | null = null;
+      let rightHand: HandData | null = null;
+      let faceData: FaceData | null = null;
+      let faceConfidence = 0;
+
+      // Process pose
+      if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+        console.log('📍 Processing pose with landmarks:', results.poseLandmarks.length);
+        console.log('📍 Sample pose landmarks:', results.poseLandmarks.slice(0, 5));
+        poseData = this.convertPoseToKalidokit(results.poseLandmarks, results.poseWorldLandmarks);
+        poseConfidence = this.calculatePoseConfidence(results.poseLandmarks);
+        console.log('📍 Pose détectée:', poseConfidence + '%');
+      } else {
+        console.log('📍 No pose landmarks detected');
+      }
+
+      // Process hands
+      if (results.leftHandLandmarks) {
+        leftHand = {
+          landmarks: results.leftHandLandmarks,
+          handedness: 'left',
+          gesture: this.detectHandGesture(results.leftHandLandmarks)
+        };
+        console.log('👋 Main gauche:', leftHand.gesture);
+      }
+
+      if (results.rightHandLandmarks) {
+        rightHand = {
+          landmarks: results.rightHandLandmarks,
+          handedness: 'right',
+          gesture: this.detectHandGesture(results.rightHandLandmarks)
+        };
+        console.log('👋 Main droite:', rightHand.gesture);
+      }
+
+      // Process face
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        faceData = this.convertFaceToKalidokit(results.faceLandmarks);
+        faceConfidence = this.calculateFaceConfidence(results.faceLandmarks);
+        console.log('😊 Visage détecté:', faceConfidence + '%');
+      }
+
+      const bodyMetrics = this.calculateBodyMetrics(poseData, faceData);
+
+      this.updateAnalysis({
+        pose: poseData,
+        face: faceData,
+        hands: {
+          left: leftHand,
+          right: rightHand
+        },
+        isAnalyzing: false,
+        poseConfidence: poseConfidence,
+        faceConfidence: faceConfidence,
+        handsDetected: {
+          left: leftHand !== null,
+          right: rightHand !== null
+        },
+        bodyMetrics: bodyMetrics
+      });
+      
+      console.log('📊 Updated analysis with pose confidence:', poseConfidence);
+    } catch (error) {
+      console.error('❌ Erreur lors du traitement:', error);
+      this.updateAnalysis({ isAnalyzing: false });
+    }
+  }
+
+  private convertPoseToKalidokit(landmarks: any, worldLandmarks?: any): PoseData {
+    console.log('🔄 Converting pose to Kalidokit, landmarks count:', landmarks?.length);
+    try {
+      // Validate inputs before processing
+      if (!landmarks || !Array.isArray(landmarks) || landmarks.length === 0) {
+        console.log('🔄 No landmarks to convert');
+        return {};
+      }
+      
+      // Ensure all landmarks have required properties
+      const validLandmarks = landmarks.map((landmark: any) => ({
+        x: landmark?.x ?? 0,
+        y: landmark?.y ?? 0,
+        z: landmark?.z ?? 0,
+        visibility: landmark?.visibility ?? landmark?.score ?? 0
+      }));
+      
+      // Skip Kalidokit processing for now to avoid errors
+      // const kalidokitPose = this.kalidokit.Pose.solve(validLandmarks, validLandmarks);
+
+      const poseData: PoseData = {};
+
+      const keyPoints = [
+        'Head', 'Neck', 'Spine', 'Hips',
+        'LeftShoulder', 'LeftElbow', 'LeftWrist',
+        'RightShoulder', 'RightElbow', 'RightWrist',
+        'LeftHip', 'LeftKnee', 'LeftAnkle',
+        'RightHip', 'RightKnee', 'RightAnkle'
+      ];
+
+      keyPoints.forEach((keyPoint: string, index: number) => {
+        if (validLandmarks[index]) {
+          poseData[keyPoint] = {
+            position: {
+              x: validLandmarks[index].x,
+              y: validLandmarks[index].y,
+              z: validLandmarks[index].z
+            },
+            confidence: validLandmarks[index].visibility
+          };
+        }
+      });
+      
+      console.log('🔄 Converted pose data keys:', Object.keys(poseData));
+      return poseData;
+    } catch (error) {
+      console.error('❌ Erreur conversion pose:', error);
+      // Return minimal pose data even if conversion fails
+      return {};
+    }
+  }
+
+  private convertFaceToKalidokit(faceLandmarks: any): FaceData {
+    try {
+      const kalidokitFace = this.kalidokit.Face.solve(faceLandmarks, { runtime: 'mediapipe' });
+
+      const faceData: FaceData = {
+        Head: {
+          position: {
+            x: faceLandmarks[0]?.x || 0,
+            y: faceLandmarks[0]?.y || 0,
+            z: faceLandmarks[0]?.z || 0
+          }
+        }
+      };
+
+      if (faceLandmarks.length > 0) {
+        faceData.mouth_open = this.calculateMouthOpenness(faceLandmarks);
+        faceData.eye_blink_left = this.detectEyeBlink(faceLandmarks, 'left');
+        faceData.eye_blink_right = this.detectEyeBlink(faceLandmarks, 'right');
+        faceData.eye_look_left = this.detectEyeGaze(faceLandmarks, 'left');
+        faceData.eye_look_right = this.detectEyeGaze(faceLandmarks, 'right');
+      }
+
+      if (kalidokitFace) {
+        Object.assign(faceData, kalidokitFace);
+      }
+
+      return faceData;
+    } catch (error) {
+      console.error('Erreur conversion face:', error);
+      return {};
+    }
+  }
+
+  private calculatePoseConfidence(landmarks: any): number {
+    if (!landmarks || landmarks.length === 0) return 0;
+    
+    // Log landmarks for debugging
+    console.log('📏 Pose landmarks for confidence calculation:', landmarks.length, landmarks.slice(0, 5));
+
+    const keyIndices = [0, 11, 12, 13, 14, 15, 16];
+    let totalConfidence = 0;
+    let count = 0;
+
+    keyIndices.forEach(idx => {
+      if (landmarks[idx]) {
+        // Check for different possible confidence properties
+        const visibility = landmarks[idx].visibility ?? landmarks[idx].score ?? 0;
+        totalConfidence += visibility;
+        count++;
+        console.log(`📏 Landmark ${idx}: visibility=${visibility}`);
+      }
+    });
+
+    const confidence = count > 0 ? Math.round((totalConfidence / count) * 100) : 0;
+    console.log('📏 Calculated pose confidence:', confidence);
+    return confidence;
+  }
+
+  private calculateFaceConfidence(faceLandmarks: any): number {
+    if (!faceLandmarks || faceLandmarks.length === 0) return 0;
+
+    let totalConfidence = 0;
+    faceLandmarks.forEach((landmark: any) => {
+      if (landmark?.z !== undefined) {
+        totalConfidence += Math.max(0, 1 - Math.abs(landmark.z));
+      }
+    });
+
+    const avgConfidence = totalConfidence / Math.max(1, faceLandmarks.length);
+    return Math.round(avgConfidence * 100);
+  }
+
+  private detectHandGesture(landmarks: any): string {
+    if (!landmarks || landmarks.length < 21) return 'Inconnu';
+
+    if (this.isFist(landmarks)) return 'Poing';
+    if (this.isVictory(landmarks)) return 'Victoire ✌️';
+    if (this.isOK(landmarks)) return 'OK 👌';
+    if (this.isThumbsUp(landmarks)) return 'Pouce 👍';
+    if (this.isOpenHand(landmarks)) return 'Ouverte 🖐️';
+
+    return 'Neutre';
+  }
+
+  private isFist(landmarks: any): boolean {
+    const tips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
+    const base = landmarks[9];
+    return tips.every(tip => Math.abs(tip.y - base.y) < 0.05);
+  }
+
+  private isVictory(landmarks: any): boolean {
+    const indexTip = landmarks[8];
+    const middleTip = landmarks[12];
+    const ringTip = landmarks[16];
+    const pinkyTip = landmarks[20];
+    const base = landmarks[9];
+
+    return (indexTip.y < base.y && middleTip.y < base.y &&
+      ringTip.y > base.y && pinkyTip.y > base.y);
+  }
+
+  private isOK(landmarks: any): boolean {
+    const thumbTip = landmarks[4];
+    const indexTip = landmarks[8];
+    const distance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+    return distance < 0.05;
+  }
+
+  private isThumbsUp(landmarks: any): boolean {
+    const thumbTip = landmarks[4];
+    const palmBase = landmarks[0];
+    return thumbTip.y < palmBase.y - 0.1;
+  }
+
+  private isOpenHand(landmarks: any): boolean {
+    const tips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
+    const base = landmarks[9];
+    return tips.filter(tip => tip.y < base.y).length >= 4;
+  }
+
+  private calculateMouthOpenness(faceLandmarks: any): number {
+    if (faceLandmarks.length < 70) return 0;
+    const topLip = faceLandmarks[61];
+    const bottomLip = faceLandmarks[67];
+    const distance = Math.hypot(topLip.x - bottomLip.x, topLip.y - bottomLip.y);
+    return Math.min(100, Math.round(distance * 1000));
+  }
+
+  private detectEyeBlink(faceLandmarks: any, side: 'left' | 'right'): number {
+    if (faceLandmarks.length < 70) return 0;
+    const startIdx = side === 'left' ? 159 : 386;
+    const eyeLandmarks = faceLandmarks.slice(startIdx, startIdx + 10);
+
+    if (eyeLandmarks.length === 0) return 0;
+
+    let totalDistance = 0;
+    for (let i = 0; i < eyeLandmarks.length; i += 2) {
+      if (eyeLandmarks[i] && eyeLandmarks[i + 1]) {
+        const dist = Math.hypot(
+          eyeLandmarks[i].x - eyeLandmarks[i + 1].x,
+          eyeLandmarks[i].y - eyeLandmarks[i + 1].y
+        );
+        totalDistance += dist;
+      }
+    }
+
+    const avgDistance = totalDistance / (eyeLandmarks.length / 2);
+    return Math.round(Math.max(0, 100 - avgDistance * 500));
+  }
+
+  private detectEyeGaze(faceLandmarks: any, side: 'left' | 'right'): number {
+    if (faceLandmarks.length < 70) return 0;
+    const pupilIdx = side === 'left' ? 473 : 468;
+
+    if (faceLandmarks[pupilIdx]) {
+      return faceLandmarks[pupilIdx].x * 100;
+    }
+    return 0;
+  }
+
+  private calculateBodyMetrics(poseData: PoseData | null, faceData: FaceData | null) {
+    let posture = 'Neutre';
+    let faceExpression = 'Neutre';
+
+    if (poseData) {
+      const head = poseData['Head'];
+      const leftShoulder = poseData['LeftShoulder'];
+      const rightShoulder = poseData['RightShoulder'];
+
+      if (head && leftShoulder && rightShoulder) {
+        const shoulderAngle = Math.atan2(
+          (rightShoulder.position?.y || 0) - (leftShoulder.position?.y || 0),
+          (rightShoulder.position?.x || 0) - (leftShoulder.position?.x || 0)
+        );
+
+        if (Math.abs(shoulderAngle) > 0.3) posture = 'Penchée';
+        else if (Math.abs(shoulderAngle) < 0.1) posture = 'Droite';
+      }
+    }
+
+    if (faceData) {
+      if (faceData.mouth_open && faceData.mouth_open > 30) {
+        faceExpression = 'Bouche ouverte';
+      } else if (faceData.eye_blink_left && faceData.eye_blink_left > 50) {
+        faceExpression = 'Clignotement';
+      } else {
+        faceExpression = 'Naturelle';
+      }
+    }
+
+    return {
+      posture,
+      faceExpression,
+      leftGesture: 'N/A',
+      rightGesture: 'N/A'
+    };
+  }
+
+  private updateAnalysis(partial: Partial<BodyAnalysis>): void {
+    const current = this.bodyAnalysisSubject.value;
+    this.bodyAnalysisSubject.next({
+      ...current,
+      ...partial
+    });
+  }
+
+  getCurrentAnalysis(): BodyAnalysis {
+    return this.bodyAnalysisSubject.value;
+  }
+
+  dispose(): void {
+    if (this.mpCamera) {
+      this.mpCamera.stop();
+    }
+    if (this.holistic) {
+      this.holistic.close();
+      this.holistic = null;
+    }
+  }
+}

@@ -1,0 +1,69 @@
+<div class="user-type-form-container">
+  <h2>{{ isEditMode ? 'Modifier le Type d\'Utilisateur' : 'Créer un Type d\'Utilisateur' }}</h2>
+
+  <div class="loading" *ngIf="loading && isEditMode">
+    <div class="spinner-border" role="status">
+      <span class="sr-only">Chargement...</span>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="error">
+    <div class="alert alert-danger">{{ error }}</div>
+  </div>
+
+  <form [formGroup]="userTypeForm" (ngSubmit)="onSubmit()" class="user-type-form" *ngIf="!loading || !isEditMode">
+    <div class="form-group">
+      <label for="nom">Nom *</label>
+      <input 
+        type="text" 
+        id="nom" 
+        formControlName="nom" 
+        class="form-control" 
+        [class.is-invalid]="userTypeForm.get('nom')?.invalid && userTypeForm.get('nom')?.touched"
+        placeholder="Entrez le nom du type d'utilisateur">
+      <div class="invalid-feedback" *ngIf="userTypeForm.get('nom')?.invalid && userTypeForm.get('nom')?.touched">
+        <div *ngIf="userTypeForm.get('nom')?.errors?.['required']">Le nom est requis.</div>
+        <div *ngIf="userTypeForm.get('nom')?.errors?.['minlength']">Le nom doit contenir au moins 2 caractères.</div>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea 
+        id="description" 
+        formControlName="description" 
+        class="form-control" 
+        [class.is-invalid]="userTypeForm.get('description')?.invalid && userTypeForm.get('description')?.touched"
+        placeholder="Entrez une description (optionnel)" 
+        rows="4"></textarea>
+      <div class="invalid-feedback" *ngIf="userTypeForm.get('description')?.invalid && userTypeForm.get('description')?.touched">
+        <div *ngIf="userTypeForm.get('description')?.errors?.['maxlength']">La description ne doit pas dépasser 500 caractères.</div>
+      </div>
+    </div>
+    
+    <div class="form-group form-check">
+      <input 
+        type="checkbox" 
+        id="special" 
+        formControlName="special" 
+        class="form-check-input">
+      <label class="form-check-label" for="special">Type spécial</label>
+    </div>
+    
+    <div class="form-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="onCancel()">
+        Annuler
+      </button>
+      <button 
+        type="submit" 
+        class="btn btn-primary" 
+        [disabled]="userTypeForm.invalid || loading">
+        <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        {{ isEditMode ? (loading ? 'Modification...' : 'Modifier') : (loading ? 'Création...' : 'Créer') }}
+      </button>
+    </div>
+  </form>
+</div>
