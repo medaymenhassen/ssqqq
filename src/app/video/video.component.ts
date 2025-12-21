@@ -17,6 +17,7 @@ import { BodyAnalysis } from '../video.service';
 import { DataService } from '../services/data.service';
 import { DataRecord } from '../models/data.model';
 import { AuthService, User } from '../auth.service';
+import { AiService } from '../services/ai.service';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
@@ -63,6 +64,7 @@ export class VideoComponent implements OnInit, OnDestroy {
   constructor(
     @Inject(VideoService) private videoService: VideoService,
     private dataService: DataService,
+    private aiService: AiService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -164,8 +166,8 @@ export class VideoComponent implements OnInit, OnDestroy {
   stopCamera(): void {
     this.isTracking = false;
 
-    // Send captured data to Spring Boot before stopping
-    this.sendCapturedDataToSpringBoot();
+    // Send captured data to backends before stopping
+    this.sendCapturedDataToBackends();
 
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
@@ -640,12 +642,12 @@ export class VideoComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Send captured video and movement data to Spring Boot backend
+   * Send captured video and movement data to both Spring Boot and Django AI backends
    */
-  private sendCapturedDataToSpringBoot(): void {
-    console.log('📤 Sending captured data to Spring Boot...');
+  private sendCapturedDataToBackends(): void {
+    console.log('📤 Sending captured data to backends...');
     
-    // Send captured movement data
+    // Send captured movement data to Spring Boot
     if (this.capturedMovements.length > 0) {
       console.log(`📤 Sending ${this.capturedMovements.length} movement records to Spring Boot`);
       
@@ -682,7 +684,7 @@ export class VideoComponent implements OnInit, OnDestroy {
       console.log('📭 No movement data to send to Spring Boot');
     }
     
-    // Send captured videos
+    // Send captured videos to Spring Boot
     if (this.capturedVideos.length > 0) {
       console.log(`📤 Sending ${this.capturedVideos.length} video segments to Spring Boot`);
       
@@ -727,6 +729,30 @@ export class VideoComponent implements OnInit, OnDestroy {
       console.log('📭 No video data to send to Spring Boot');
     }
     
-    console.log('📤 All captured data sent to Spring Boot');
+    // Send captured movement data to Django AI backend
+    if (this.capturedMovements.length > 0) {
+      console.log(`📤 Sending ${this.capturedMovements.length} movement records to Django AI`);
+      
+      this.capturedMovements.forEach((movementData, index) => {
+        const aiRecord = {
+          user: this.userId,
+          json_data: movementData,
+          movement_detected: true
+        };
+        
+        this.aiService.createMovementRecord(aiRecord).subscribe({
+          next: (record) => {
+            console.log(`✅ Movement record ${index + 1}/${this.capturedMovements.length} sent to Django AI:`, record.id);
+          },
+          error: (err) => {
+            console.error(`❌ Error sending movement record ${index + 1} to Django AI:`, err);
+          }
+        });
+      });
+    } else {
+      console.log('📭 No movement data to send to Django AI');
+    }
+    
+    console.log('📤 All captured data sent to backends');
   }
 }

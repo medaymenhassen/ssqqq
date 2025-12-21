@@ -2,7 +2,6 @@ package com.auth.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "user_types")
@@ -12,16 +11,22 @@ public class UserType {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true)
-    private String nom;
+    @Column(name = "name_fr", nullable = false)
+    private String nameFr;
     
-    @Column(length = 500)
-    private String description;
+    @Column(name = "name_en", nullable = false)
+    private String nameEn;
     
-    @Column(name = "is_special")
-    private boolean isSpecial;
+    @Column(name = "desc_fr", length = 500)
+    private String descFr;
     
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "desc_en", length = 500)
+    private String descEn;
+    
+    @Column(name = "bigger", nullable = false)
+    private String bigger = "middle";
+    
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
     @Column(name = "updated_at")
@@ -30,10 +35,12 @@ public class UserType {
     // Constructors
     public UserType() {}
     
-    public UserType(String nom, String description, boolean isSpecial) {
-        this.nom = nom;
-        this.description = description;
-        this.isSpecial = isSpecial;
+    public UserType(String nameFr, String nameEn, String descFr, String descEn, String bigger) {
+        this.nameFr = nameFr;
+        this.nameEn = nameEn;
+        this.descFr = descFr;
+        this.descEn = descEn;
+        this.bigger = bigger;
     }
     
     @PrePersist
@@ -56,28 +63,44 @@ public class UserType {
         this.id = id;
     }
     
-    public String getNom() {
-        return nom;
+    public String getNameFr() {
+        return nameFr;
     }
     
-    public void setNom(String nom) {
-        this.nom = nom;
+    public void setNameFr(String nameFr) {
+        this.nameFr = nameFr;
     }
     
-    public String getDescription() {
-        return description;
+    public String getNameEn() {
+        return nameEn;
     }
     
-    public void setDescription(String description) {
-        this.description = description;
+    public void setNameEn(String nameEn) {
+        this.nameEn = nameEn;
     }
     
-    public boolean isSpecial() {
-        return isSpecial;
+    public String getDescFr() {
+        return descFr;
     }
     
-    public void setSpecial(boolean special) {
-        isSpecial = special;
+    public void setDescFr(String descFr) {
+        this.descFr = descFr;
+    }
+    
+    public String getDescEn() {
+        return descEn;
+    }
+    
+    public void setDescEn(String descEn) {
+        this.descEn = descEn;
+    }
+    
+    public String getBigger() {
+        return bigger;
+    }
+    
+    public void setBigger(String bigger) {
+        this.bigger = bigger;
     }
     
     public LocalDateTime getCreatedAt() {

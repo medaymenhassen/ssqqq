@@ -1,25 +1,5 @@
 
-<nav class="navbar">
-  <div class="navbar-brand">
-    <a routerLink="/bodyanalytics">Tracker Corporel</a>
-  </div>
-  <div class="navbar-menu">
-    <a routerLink="/bodyanalytics" routerLinkActive="active">Analyse</a>
-    <a routerLink="/user-types" routerLinkActive="active">Types d'Utilisateurs</a>
-    <a routerLink="/users" routerLinkActive="active">Utilisateurs</a>
-    
-    <!-- Show logout when logged in -->
-    <ng-container *ngIf="authService.isLoggedIn()">
-      <a (click)="logout()" class="nav-link">Déconnexion</a>
-    </ng-container>
-    
-    <!-- Show login/register when not logged in -->
-    <ng-container *ngIf="!authService.isLoggedIn()">
-      <a routerLink="/login" routerLinkActive="active">Connexion</a>
-      <a routerLink="/register" routerLinkActive="active">Inscription</a>
-    </ng-container>
-  </div>
-</nav>
+<app-navigation></app-navigation>
 
 <main class="main-content">
   <router-outlet />

@@ -1,0 +1,21 @@
+<nav class="navbar">
+  <div class="nav-container">
+    <a routerLink="/" class="nav-logo">EduPlatform</a>
+    
+    <div class="nav-menu" [class.active]="isMenuOpen">
+      <a routerLink="/bodyanalytics" class="nav-link">Home</a>
+      <a routerLink="/user-types" class="nav-link">User Types</a>
+      <a routerLink="/users" class="nav-link">Users</a>
+      <a routerLink="/course-tests" class="nav-link">Course Tests</a>
+      <a routerLink="/course-lessons" class="nav-link">Course Lessons</a>
+      <a routerLink="/data" class="nav-link">Data</a>
+      <a routerLink="/login" class="nav-link">Login</a>
+    </div>
+    
+    <div class="nav-toggle" (click)="toggleMenu()">
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </div>
+  </div>
+</nav>

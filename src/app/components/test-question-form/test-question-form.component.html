@@ -1,0 +1,83 @@
+<div class="container">
+  <h2>{{ isEditMode ? 'Edit Question' : 'Create Question' }}</h2>
+  
+  <form [formGroup]="questionForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+    <div class="form-group">
+      <label for="questionText">Question Text *</label>
+      <textarea id="questionText" formControlName="questionText" class="form-control"></textarea>
+      <div *ngIf="questionForm.get('questionText')?.invalid && questionForm.get('questionText')?.touched" class="error">
+        Question text is required and must be at least 2 characters long.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="questionOrder">Question Order *</label>
+      <input type="number" id="questionOrder" formControlName="questionOrder" class="form-control">
+      <div *ngIf="questionForm.get('questionOrder')?.invalid && questionForm.get('questionOrder')?.touched" class="error">
+        Question order is required and must be at least 1.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="points">Points</label>
+      <input type="number" id="points" formControlName="points" class="form-control">
+      <div *ngIf="questionForm.get('points')?.invalid && questionForm.get('points')?.touched" class="error">
+        Points must be at least 1.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="questionType">Question Type *</label>
+      <select id="questionType" formControlName="questionType" class="form-control">
+        <option *ngFor="let type of questionTypes" [value]="type.value">{{ type.label }}</option>
+      </select>
+      <div *ngIf="questionForm.get('questionType')?.invalid && questionForm.get('questionType')?.touched" class="error">
+        Question type is required.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="courseTestId">Course Test (Optional)</label>
+      <select id="courseTestId" formControlName="courseTestId" class="form-control">
+        <option value="">Select a course test</option>
+        <option *ngFor="let courseTest of courseTests" [value]="courseTest.id">{{ courseTest.title }}</option>
+      </select>
+      <small class="form-text text-muted">Link this question to a specific course test</small>
+    </div>
+    
+    <div class="form-group">
+      <label for="courseLessonId">Course Lesson (Optional)</label>
+      <select id="courseLessonId" formControlName="courseLessonId" class="form-control">
+        <option value="">Select a course lesson</option>
+        <option *ngFor="let courseLesson of courseLessons" [value]="courseLesson.id">{{ courseLesson.title }}</option>
+      </select>
+      <small class="form-text text-muted">Link this question to a specific course lesson</small>
+    </div>
+    
+    <div class="lesson-features">
+      <h4>Lesson Features</h4>
+      <p>When linked to a course lesson, this question will be associated with:</p>
+      <ul>
+        <li>Video content</li>
+        <li>3D animation</li>
+        <li>Course materials with titles and descriptions</li>
+        <li>Proper ordering within the lesson</li>
+      </ul>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" [disabled]="questionForm.invalid || loading" class="btn btn-primary">
+        {{ isEditMode ? 'Update' : 'Create' }}
+      </button>
+      <button type="button" (click)="onCancel()" class="btn btn-secondary">Cancel</button>
+    </div>
+  </form>
+  
+  <div *ngIf="loading" class="loading">
+    Loading...
+  </div>
+  
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+</div>

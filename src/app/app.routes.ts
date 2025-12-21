@@ -6,6 +6,14 @@ import { UserTypeListComponent } from './user-type-list/user-type-list.component
 import { UserTypeFormComponent } from './user-type-form/user-type-form.component';
 import { UserListComponent } from './user-list/user-list.component';
 import { DataViewerComponent } from './data-viewer/data-viewer.component';
+import { CourseTestFormComponent } from './components/course-test-form/course-test-form.component';
+import { CourseTestListComponent } from './components/course-test-list/course-test-list.component';
+import { TestQuestionFormComponent } from './components/test-question-form/test-question-form.component';
+import { TestQuestionListComponent } from './components/test-question-list/test-question-list.component';
+import { TestAnswerFormComponent } from './components/test-answer-form/test-answer-form.component';
+import { QuestionAnswerManagerComponent } from './components/question-answer-manager/question-answer-manager.component';
+import { CourseLessonListComponent } from './components/course-lesson-list/course-lesson-list.component';
+import { CourseLessonFormComponent } from './components/course-lesson-form/course-lesson-form.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/bodyanalytics', pathMatch: 'full' },
@@ -17,5 +25,17 @@ export const routes: Routes = [
   { path: 'user-types/create', component: UserTypeFormComponent },
   { path: 'user-types/:id/edit', component: UserTypeFormComponent },
   { path: 'users', component: UserListComponent },
+  { path: 'course-tests', component: CourseTestListComponent },
+  { path: 'course-tests/create', component: CourseTestFormComponent },
+  { path: 'course-tests/:id/edit', component: CourseTestFormComponent },
+  { path: 'test-questions', component: TestQuestionListComponent },
+  { path: 'test-questions/create', component: TestQuestionFormComponent },
+  { path: 'test-questions/:id/edit', component: TestQuestionFormComponent },
+  { path: 'test-questions/:id/answers', component: QuestionAnswerManagerComponent },
+  { path: 'test-answers/create', component: TestAnswerFormComponent },
+  { path: 'test-answers/:id/edit', component: TestAnswerFormComponent },
+  { path: 'course-lessons', component: CourseLessonListComponent },
+  { path: 'course-lessons/create', component: CourseLessonFormComponent },
+  { path: 'course-lessons/:id/edit', component: CourseLessonFormComponent },
   { path: '**', redirectTo: '/bodyanalytics' }
 ];

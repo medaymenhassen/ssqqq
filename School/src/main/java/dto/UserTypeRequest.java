@@ -5,37 +5,60 @@ import jakarta.validation.constraints.Size;
 
 public class UserTypeRequest {
     
-    @NotBlank(message = "Le nom est obligatoire")
-    @Size(max = 100, message = "Le nom ne doit pas dépasser 100 caractères")
-    private String nom;
+    @NotBlank(message = "Le nom français est obligatoire")
+    @Size(max = 100, message = "Le nom français ne doit pas dépasser 100 caractères")
+    private String nameFr;
     
-    @Size(max = 500, message = "La description ne doit pas dépasser 500 caractères")
-    private String description;
+    @NotBlank(message = "Le nom anglais est obligatoire")
+    @Size(max = 100, message = "Le nom anglais ne doit pas dépasser 100 caractères")
+    private String nameEn;
     
-    private boolean isSpecial;
+    @Size(max = 500, message = "La description française ne doit pas dépasser 500 caractères")
+    private String descFr;
+    
+    @Size(max = 500, message = "La description anglaise ne doit pas dépasser 500 caractères")
+    private String descEn;
+    
+    private String bigger;
     
     // Getters and Setters
-    public String getNom() {
-        return nom;
+    public String getNameFr() {
+        return nameFr;
     }
     
-    public void setNom(String nom) {
-        this.nom = nom;
+    public void setNameFr(String nameFr) {
+        this.nameFr = nameFr;
     }
     
-    public String getDescription() {
-        return description;
+    public String getNameEn() {
+        return nameEn;
     }
     
-    public void setDescription(String description) {
-        this.description = description;
+    public void setNameEn(String nameEn) {
+        this.nameEn = nameEn;
     }
     
-    public boolean isSpecial() {
-        return isSpecial;
+    public String getDescFr() {
+        return descFr;
     }
     
-    public void setSpecial(boolean special) {
-        isSpecial = special;
+    public void setDescFr(String descFr) {
+        this.descFr = descFr;
+    }
+    
+    public String getDescEn() {
+        return descEn;
+    }
+    
+    public void setDescEn(String descEn) {
+        this.descEn = descEn;
+    }
+    
+    public String getBigger() {
+        return bigger;
+    }
+    
+    public void setBigger(String bigger) {
+        this.bigger = bigger;
     }
 }

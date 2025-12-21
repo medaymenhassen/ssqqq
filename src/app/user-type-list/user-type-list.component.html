@@ -20,29 +20,29 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>Nom</th>
-          <th>Description</th>
-          <th>Type Spécial</th>
+          <th>Nom Français</th>
+          <th>Nom Anglais</th>
+          <th>Description Française</th>
+          <th>Description Anglaise</th>
+          <th>Taille</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let userType of userTypes">
           <td>{{ userType.id }}</td>
-          <td>{{ userType.nom }}</td>
-          <td>{{ userType.description }}</td>
-          <td>
-            <span class="badge" [class.badge-success]="userType.special" [class.badge-secondary]="!userType.special">
-              {{ userType.special ? 'Spécial' : 'Normal' }}
-            </span>
-          </td>
+          <td>{{ userType.nameFr }}</td>
+          <td>{{ userType.nameEn }}</td>
+          <td>{{ userType.descFr }}</td>
+          <td>{{ userType.descEn }}</td>
+          <td>{{ userType.bigger }}</td>
           <td>
             <button class="btn btn-sm btn-outline-primary" (click)="editUserType(userType.id)">Modifier</button>
             <button class="btn btn-sm btn-outline-danger" (click)="deleteUserType(userType.id)">Supprimer</button>
           </td>
         </tr>
         <tr *ngIf="userTypes.length === 0">
-          <td colspan="5" class="text-center">Aucun type d'utilisateur trouvé</td>
+          <td colspan="7" class="text-center">Aucun type d'utilisateur trouvé</td>
         </tr>
       </tbody>
     </table>

@@ -1,0 +1,64 @@
+<div class="container">
+  <h2>{{ isEditMode ? 'Edit Course Test' : 'Create Course Test' }}</h2>
+  
+  <form [formGroup]="courseTestForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+    <div class="form-group">
+      <label for="title">Title *</label>
+      <input type="text" id="title" formControlName="title" class="form-control">
+      <div *ngIf="courseTestForm.get('title')?.invalid && courseTestForm.get('title')?.touched" class="error">
+        Title is required and must be at least 2 characters long.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea id="description" formControlName="description" class="form-control"></textarea>
+      <div *ngIf="courseTestForm.get('description')?.invalid && courseTestForm.get('description')?.touched" class="error">
+        Description must be less than 1000 characters.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="passingScore">Passing Score (%)</label>
+      <input type="number" id="passingScore" formControlName="passingScore" class="form-control">
+      <div *ngIf="courseTestForm.get('passingScore')?.invalid && courseTestForm.get('passingScore')?.touched" class="error">
+        Passing score must be between 0 and 100.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="timeLimitMinutes">Time Limit (minutes)</label>
+      <input type="number" id="timeLimitMinutes" formControlName="timeLimitMinutes" class="form-control">
+      <div *ngIf="courseTestForm.get('timeLimitMinutes')?.invalid && courseTestForm.get('timeLimitMinutes')?.touched" class="error">
+        Time limit must be at least 1 minute.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="courseId">Course ID (Optional)</label>
+      <input type="number" id="courseId" formControlName="courseId" class="form-control">
+      <small class="form-text text-muted">Link this test to a specific course</small>
+    </div>
+    
+    <div class="form-group">
+      <label for="lessonId">Lesson ID (Optional)</label>
+      <input type="number" id="lessonId" formControlName="lessonId" class="form-control">
+      <small class="form-text text-muted">Link this test to a specific lesson</small>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" [disabled]="courseTestForm.invalid || loading" class="btn btn-primary">
+        {{ isEditMode ? 'Update' : 'Create' }}
+      </button>
+      <button type="button" (click)="onCancel()" class="btn btn-secondary">Cancel</button>
+    </div>
+  </form>
+  
+  <div *ngIf="loading" class="loading">
+    Loading...
+  </div>
+  
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+</div>

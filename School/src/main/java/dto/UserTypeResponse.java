@@ -5,20 +5,24 @@ import java.time.LocalDateTime;
 public class UserTypeResponse {
     
     private Long id;
-    private String nom;
-    private String description;
-    private boolean isSpecial;
+    private String nameFr;
+    private String nameEn;
+    private String descFr;
+    private String descEn;
+    private String bigger;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
     // Constructors
     public UserTypeResponse() {}
     
-    public UserTypeResponse(Long id, String nom, String description, boolean isSpecial, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public UserTypeResponse(Long id, String nameFr, String nameEn, String descFr, String descEn, String bigger, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.nom = nom;
-        this.description = description;
-        this.isSpecial = isSpecial;
+        this.nameFr = nameFr;
+        this.nameEn = nameEn;
+        this.descFr = descFr;
+        this.descEn = descEn;
+        this.bigger = bigger;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -32,28 +36,44 @@ public class UserTypeResponse {
         this.id = id;
     }
     
-    public String getNom() {
-        return nom;
+    public String getNameFr() {
+        return nameFr;
     }
     
-    public void setNom(String nom) {
-        this.nom = nom;
+    public void setNameFr(String nameFr) {
+        this.nameFr = nameFr;
     }
     
-    public String getDescription() {
-        return description;
+    public String getNameEn() {
+        return nameEn;
     }
     
-    public void setDescription(String description) {
-        this.description = description;
+    public void setNameEn(String nameEn) {
+        this.nameEn = nameEn;
     }
     
-    public boolean isSpecial() {
-        return isSpecial;
+    public String getDescFr() {
+        return descFr;
     }
     
-    public void setSpecial(boolean special) {
-        isSpecial = special;
+    public void setDescFr(String descFr) {
+        this.descFr = descFr;
+    }
+    
+    public String getDescEn() {
+        return descEn;
+    }
+    
+    public void setDescEn(String descEn) {
+        this.descEn = descEn;
+    }
+    
+    public String getBigger() {
+        return bigger;
+    }
+    
+    public void setBigger(String bigger) {
+        this.bigger = bigger;
     }
     
     public LocalDateTime getCreatedAt() {

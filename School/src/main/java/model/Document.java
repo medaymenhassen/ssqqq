@@ -12,17 +12,34 @@ public class Document {
     private Long id;
     
     @Column(nullable = false)
-    private String name;
+    private String fileName;
     
-    @Column(length = 1000)
-    private String description;
+    @Column(nullable = false)
+    private String fileType; // PDF, IMAGE, VIDEO
     
-    @Column(name = "file_path")
-    private String filePath;
+    @Column(nullable = false)
+    private String filePath; // Path where file is stored
+    
+    @Column(name = "file_size")
+    private Long fileSize;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_type_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_type_id")
     private UserType userType;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_answer_id")
+    private TestAnswer testAnswer;
+    
+    @Column(name = "uploaded_at", nullable = false)
+    private LocalDateTime uploadedAt;
+    
+    @Column(name = "approved")
+    private Boolean approved = false;
     
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -33,17 +50,13 @@ public class Document {
     // Constructors
     public Document() {}
     
-    public Document(String name, String description, String filePath, UserType userType) {
-        this.name = name;
-        this.description = description;
-        this.filePath = filePath;
-        this.userType = userType;
-    }
-    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (uploadedAt == null) {
+            uploadedAt = LocalDateTime.now();
+        }
     }
     
     @PreUpdate
@@ -60,20 +73,20 @@ public class Document {
         this.id = id;
     }
     
-    public String getName() {
-        return name;
+    public String getFileName() {
+        return fileName;
     }
     
-    public void setName(String name) {
-        this.name = name;
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
     
-    public String getDescription() {
-        return description;
+    public String getFileType() {
+        return fileType;
     }
     
-    public void setDescription(String description) {
-        this.description = description;
+    public void setFileType(String fileType) {
+        this.fileType = fileType;
     }
     
     public String getFilePath() {
@@ -84,12 +97,52 @@ public class Document {
         this.filePath = filePath;
     }
     
+    public Long getFileSize() {
+        return fileSize;
+    }
+    
+    public void setFileSize(Long fileSize) {
+        this.fileSize = fileSize;
+    }
+    
+    public User getUser() {
+        return user;
+    }
+    
+    public void setUser(User user) {
+        this.user = user;
+    }
+    
     public UserType getUserType() {
         return userType;
     }
     
     public void setUserType(UserType userType) {
         this.userType = userType;
+    }
+    
+    public TestAnswer getTestAnswer() {
+        return testAnswer;
+    }
+    
+    public void setTestAnswer(TestAnswer testAnswer) {
+        this.testAnswer = testAnswer;
+    }
+    
+    public LocalDateTime getUploadedAt() {
+        return uploadedAt;
+    }
+    
+    public void setUploadedAt(LocalDateTime uploadedAt) {
+        this.uploadedAt = uploadedAt;
+    }
+    
+    public Boolean getApproved() {
+        return approved;
+    }
+    
+    public void setApproved(Boolean approved) {
+        this.approved = approved;
     }
     
     public LocalDateTime getCreatedAt() {

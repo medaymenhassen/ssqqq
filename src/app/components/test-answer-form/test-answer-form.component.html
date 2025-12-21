@@ -1,0 +1,66 @@
+<div class="container">
+  <h2>{{ isEditMode ? 'Edit Answer' : 'Create Answer' }}</h2>
+  
+  <form [formGroup]="answerForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+    <div class="form-group">
+      <label for="answerText">Answer Text *</label>
+      <textarea id="answerText" formControlName="answerText" class="form-control"></textarea>
+      <div *ngIf="answerForm.get('answerText')?.invalid && answerForm.get('answerText')?.touched" class="error">
+        Answer text is required.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="isLogical">Is Logical Answer</label>
+      <select id="isLogical" formControlName="isLogical" class="form-control">
+        <option value="false">False</option>
+        <option value="true">True</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="isCorrect">Is Correct Answer</label>
+      <select id="isCorrect" formControlName="isCorrect" class="form-control">
+        <option value="false">False</option>
+        <option value="true">True</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="answerOrder">Answer Order *</label>
+      <input type="number" id="answerOrder" formControlName="answerOrder" class="form-control">
+      <div *ngIf="answerForm.get('answerOrder')?.invalid && answerForm.get('answerOrder')?.touched" class="error">
+        Answer order is required and must be at least 1.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="questionId">Question ID *</label>
+      <input type="number" id="questionId" formControlName="questionId" class="form-control">
+      <div *ngIf="answerForm.get('questionId')?.invalid && answerForm.get('questionId')?.touched" class="error">
+        Question ID is required.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="document">Document (Optional)</label>
+      <input type="file" id="document" (change)="onFileSelected($event)" class="form-control-file">
+      <small class="form-text text-muted">Upload a document related to this answer</small>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" [disabled]="answerForm.invalid || loading" class="btn btn-primary">
+        {{ isEditMode ? 'Update' : 'Create' }}
+      </button>
+      <button type="button" (click)="onCancel()" class="btn btn-secondary">Cancel</button>
+    </div>
+  </form>
+  
+  <div *ngIf="loading" class="loading">
+    Loading...
+  </div>
+  
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+</div>

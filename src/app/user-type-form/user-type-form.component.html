@@ -13,41 +13,73 @@
 
   <form [formGroup]="userTypeForm" (ngSubmit)="onSubmit()" class="user-type-form" *ngIf="!loading || !isEditMode">
     <div class="form-group">
-      <label for="nom">Nom *</label>
+      <label for="nameFr">Nom Français *</label>
       <input 
         type="text" 
-        id="nom" 
-        formControlName="nom" 
+        id="nameFr" 
+        formControlName="nameFr" 
         class="form-control" 
-        [class.is-invalid]="userTypeForm.get('nom')?.invalid && userTypeForm.get('nom')?.touched"
-        placeholder="Entrez le nom du type d'utilisateur">
-      <div class="invalid-feedback" *ngIf="userTypeForm.get('nom')?.invalid && userTypeForm.get('nom')?.touched">
-        <div *ngIf="userTypeForm.get('nom')?.errors?.['required']">Le nom est requis.</div>
-        <div *ngIf="userTypeForm.get('nom')?.errors?.['minlength']">Le nom doit contenir au moins 2 caractères.</div>
+        [class.is-invalid]="userTypeForm.get('nameFr')?.invalid && userTypeForm.get('nameFr')?.touched"
+        placeholder="Entrez le nom français du type d'utilisateur">
+      <div class="invalid-feedback" *ngIf="userTypeForm.get('nameFr')?.invalid && userTypeForm.get('nameFr')?.touched">
+        <div *ngIf="userTypeForm.get('nameFr')?.errors?.['required']">Le nom français est requis.</div>
+        <div *ngIf="userTypeForm.get('nameFr')?.errors?.['minlength']">Le nom français doit contenir au moins 2 caractères.</div>
       </div>
     </div>
     
     <div class="form-group">
-      <label for="description">Description</label>
-      <textarea 
-        id="description" 
-        formControlName="description" 
+      <label for="nameEn">Nom Anglais *</label>
+      <input 
+        type="text" 
+        id="nameEn" 
+        formControlName="nameEn" 
         class="form-control" 
-        [class.is-invalid]="userTypeForm.get('description')?.invalid && userTypeForm.get('description')?.touched"
-        placeholder="Entrez une description (optionnel)" 
-        rows="4"></textarea>
-      <div class="invalid-feedback" *ngIf="userTypeForm.get('description')?.invalid && userTypeForm.get('description')?.touched">
-        <div *ngIf="userTypeForm.get('description')?.errors?.['maxlength']">La description ne doit pas dépasser 500 caractères.</div>
+        [class.is-invalid]="userTypeForm.get('nameEn')?.invalid && userTypeForm.get('nameEn')?.touched"
+        placeholder="Entrez le nom anglais du type d'utilisateur">
+      <div class="invalid-feedback" *ngIf="userTypeForm.get('nameEn')?.invalid && userTypeForm.get('nameEn')?.touched">
+        <div *ngIf="userTypeForm.get('nameEn')?.errors?.['required']">Le nom anglais est requis.</div>
+        <div *ngIf="userTypeForm.get('nameEn')?.errors?.['minlength']">Le nom anglais doit contenir au moins 2 caractères.</div>
       </div>
     </div>
     
-    <div class="form-group form-check">
-      <input 
-        type="checkbox" 
-        id="special" 
-        formControlName="special" 
-        class="form-check-input">
-      <label class="form-check-label" for="special">Type spécial</label>
+    <div class="form-group">
+      <label for="descFr">Description Française</label>
+      <textarea 
+        id="descFr" 
+        formControlName="descFr" 
+        class="form-control" 
+        [class.is-invalid]="userTypeForm.get('descFr')?.invalid && userTypeForm.get('descFr')?.touched"
+        placeholder="Entrez une description en français (optionnel)" 
+        rows="4"></textarea>
+      <div class="invalid-feedback" *ngIf="userTypeForm.get('descFr')?.invalid && userTypeForm.get('descFr')?.touched">
+        <div *ngIf="userTypeForm.get('descFr')?.errors?.['maxlength']">La description française ne doit pas dépasser 500 caractères.</div>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="descEn">Description Anglaise</label>
+      <textarea 
+        id="descEn" 
+        formControlName="descEn" 
+        class="form-control" 
+        [class.is-invalid]="userTypeForm.get('descEn')?.invalid && userTypeForm.get('descEn')?.touched"
+        placeholder="Entrez une description en anglais (optionnel)" 
+        rows="4"></textarea>
+      <div class="invalid-feedback" *ngIf="userTypeForm.get('descEn')?.invalid && userTypeForm.get('descEn')?.touched">
+        <div *ngIf="userTypeForm.get('descEn')?.errors?.['maxlength']">La description anglaise ne doit pas dépasser 500 caractères.</div>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="bigger">Taille</label>
+      <select 
+        id="bigger" 
+        formControlName="bigger" 
+        class="form-control">
+        <option value="small">Petit</option>
+        <option value="middle">Moyen</option>
+        <option value="big">Grand</option>
+      </select>
     </div>
     
     <div class="form-actions">

@@ -1,0 +1,89 @@
+<div class="container">
+  <div class="header">
+    <h2>Manage Answers</h2>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    Loading...
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <div *ngIf="success" class="success-message">
+    {{ success }}
+  </div>
+
+  <div *ngIf="question && !loading" class="question-info">
+    <h3>Question: {{ question.questionText }}</h3>
+    <p>Type: {{ question.questionType === 'MCQ' ? 'Multiple Choice' : 'Open Ended' }}</p>
+  </div>
+
+  <form [formGroup]="answerForm" (ngSubmit)="onSubmit()" *ngIf="question && !loading">
+    <div formArrayName="answers">
+      <div *ngFor="let answer of answers.controls; let i = index" [formGroupName]="i" class="answer-group">
+        <div class="answer-header">
+          <h4>Answer {{ i + 1 }}</h4>
+          <button type="button" (click)="removeAnswer(i)" class="btn btn-danger btn-sm" *ngIf="answers.length > 1">
+            Remove
+          </button>
+        </div>
+        <div class="form-group">
+          <label [for]="'answerText' + i">Answer Text *</label>
+          <textarea [id]="'answerText' + i" formControlName="answerText" class="form-control"></textarea>
+          <div *ngIf="answer.get('answerText')?.invalid && answer.get('answerText')?.touched" class="error">
+            Answer text is required.
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label [for]="'isLogical' + i">Logical Response</label>
+          <select [id]="'isLogical' + i" formControlName="isLogical" class="form-control">
+            <option value="false">false</option>
+            <option value="pending">pending</option>
+            <option value="true">true</option>
+          </select>
+        </div>
+        <!-- Cache-busting comment v1 -->
+        
+        <div class="form-group">
+          <label [for]="'isCorrect' + i">Correct Answer</label>
+          <select [id]="'isCorrect' + i" formControlName="isCorrect" class="form-control">
+            <option value="false">false</option>
+            <option value="pending">pending</option>
+            <option value="true">true</option>
+          </select>
+        </div>
+        <!-- Cache-busting comment v1 -->
+        
+        <div class="form-group">
+          <label [for]="'document' + i">Documents (Optional)</label>
+          <input type="file" [id]="'document' + i" (change)="onFileSelected(i, $event)" class="form-control-file" multiple>
+          <small class="form-text text-muted">You can select multiple files (images, PDFs, videos, etc.)</small>
+          <small class="form-text text-muted">Upload a document related to this answer</small>
+        </div>
+        
+        <input type="hidden" formControlName="id">
+        <input type="hidden" formControlName="answerOrder">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <button type="button" (click)="addAnswer()" class="btn btn-secondary">
+        Add Another Answer
+      </button>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" [disabled]="answerForm.invalid || loading" class="btn btn-primary">
+        Save Answers
+      </button>
+      <button type="button" (click)="onCancel()" class="btn btn-secondary">Back to Questions</button>
+    </div>
+  </form>
+  
+  <div *ngIf="!question && !loading" class="no-data">
+    No question found.
+  </div>
+</div>

@@ -1,0 +1,69 @@
+<div class="container">
+  <h2>{{ isEditMode ? 'Edit Course Lesson' : 'Create Course Lesson' }}</h2>
+  
+  <form [formGroup]="lessonForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+    <div class="form-group">
+      <label for="title">Title *</label>
+      <input type="text" id="title" formControlName="title" class="form-control">
+      <div *ngIf="lessonForm.get('title')?.invalid && lessonForm.get('title')?.touched" class="error">
+        Title is required and must be at least 2 characters long.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea id="description" formControlName="description" class="form-control"></textarea>
+      <div *ngIf="lessonForm.get('description')?.invalid && lessonForm.get('description')?.touched" class="error">
+        Description must be less than 1000 characters.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="videoUrl">Video URL</label>
+      <input type="text" id="videoUrl" formControlName="videoUrl" class="form-control">
+    </div>
+    
+    <div class="form-group">
+      <label for="animation3dUrl">3D Animation URL</label>
+      <input type="text" id="animation3dUrl" formControlName="animation3dUrl" class="form-control">
+    </div>
+    
+    <div class="form-group">
+      <label for="contentTitle">Content Title</label>
+      <input type="text" id="contentTitle" formControlName="contentTitle" class="form-control">
+    </div>
+    
+    <div class="form-group">
+      <label for="contentDescription">Content Description</label>
+      <textarea id="contentDescription" formControlName="contentDescription" class="form-control"></textarea>
+      <div *ngIf="lessonForm.get('contentDescription')?.invalid && lessonForm.get('contentDescription')?.touched" class="error">
+        Content description must be less than 2000 characters.
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="displayOrder">Display Order</label>
+      <input type="number" id="displayOrder" formControlName="displayOrder" class="form-control">
+    </div>
+    
+    <div class="form-group">
+      <label for="lessonOrder">Lesson Order</label>
+      <input type="number" id="lessonOrder" formControlName="lessonOrder" class="form-control">
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" [disabled]="lessonForm.invalid || loading" class="btn btn-primary">
+        {{ isEditMode ? 'Update' : 'Create' }}
+      </button>
+      <button type="button" (click)="onCancel()" class="btn btn-secondary">Cancel</button>
+    </div>
+  </form>
+  
+  <div *ngIf="loading" class="loading">
+    Loading...
+  </div>
+  
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+</div>

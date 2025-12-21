@@ -1,0 +1,50 @@
+<div class="container">
+  <div class="header">
+    <h2>Test Questions</h2>
+    <a routerLink="/test-questions/create" class="btn btn-primary">Create New Question</a>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    Loading test questions...
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && questions.length === 0" class="no-data">
+    No test questions found.
+  </div>
+
+  <div *ngIf="!loading && questions.length > 0" class="table-container">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Question Text</th>
+          <th>Question Type</th>
+          <th>Points</th>
+          <th>Course Test ID</th>
+          <th>Created At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let question of questions">
+          <td>{{ question.id }}</td>
+          <td>{{ question.questionText | slice:0:50 }}{{ question.questionText.length > 50 ? '...' : '' }}</td>
+          <td>{{ question.questionType }}</td>
+          <td>{{ question.points }}</td>
+          <td>{{ question.courseTestId }}</td>
+          <td>{{ question.createdAt | date:'short' }}</td>
+          <td class="actions">
+            <a [routerLink]="['/test-questions', question.id, 'edit']" class="btn btn-sm btn-secondary">Edit</a>
+            <a [routerLink]="['/test-questions', question.id, 'answers']" class="btn btn-sm btn-info">Manage Answers</a>
+            <a [routerLink]="['/test-questions', question.id, 'answers']" class="btn btn-sm btn-success">Add Answer</a>
+            <button (click)="deleteTestQuestion(question.id)" class="btn btn-sm btn-danger">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

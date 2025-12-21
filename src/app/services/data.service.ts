@@ -3,12 +3,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { DataRecord } from '../models/data.model';
 import { AuthService } from '../auth.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DataService {
-  private apiUrl = 'http://localhost:8080/api/data'; // Adjust to your backend URL
+  private apiUrl = `${environment.apiUrl}/data`; // Adjust to your backend URL
   
   constructor(private http: HttpClient, private authService: AuthService) { }
 

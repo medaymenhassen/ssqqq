@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -63,6 +64,24 @@ public class User implements UserDetails {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_type_id", nullable = true)
     private UserType userType;
+    
+    @Column(name = "is_blocked")
+    private Boolean isBlocked = false;
+    
+    @Column(name = "blocked_reason", length = 500)
+    private String blockedReason;
+    
+    @Column(name = "rgpd_accepted")
+    private Boolean rgpdAccepted = false;
+    
+    @Column(name = "rgpd_accepted_at")
+    private LocalDateTime rgpdAcceptedAt;
+    
+    @Column(name = "ccpa_accepted")
+    private Boolean ccpaAccepted = false;
+    
+    @Column(name = "ccpa_accepted_at")
+    private LocalDateTime ccpaAcceptedAt;
 
     public Long getId() {
         return id;
@@ -166,6 +185,135 @@ public class User implements UserDetails {
 
     public void setUserType(UserType userType) {
         this.userType = userType;
+    }
+
+    public Boolean getIsBlocked() {
+        return isBlocked;
+    }
+
+    public void setIsBlocked(Boolean isBlocked) {
+        this.isBlocked = isBlocked;
+    }
+
+    public String getBlockedReason() {
+        return blockedReason;
+    }
+
+    public void setBlockedReason(String blockedReason) {
+        this.blockedReason = blockedReason;
+    }
+
+    public Boolean getRgpdAccepted() {
+        return rgpdAccepted;
+    }
+
+    public void setRgpdAccepted(Boolean rgpdAccepted) {
+        this.rgpdAccepted = rgpdAccepted;
+    }
+
+    public LocalDateTime getRgpdAcceptedAt() {
+        return rgpdAcceptedAt;
+    }
+
+    public void setRgpdAcceptedAt(LocalDateTime rgpdAcceptedAt) {
+        this.rgpdAcceptedAt = rgpdAcceptedAt;
+    }
+
+    public Boolean getCcpaAccepted() {
+        return ccpaAccepted;
+    }
+
+    public void setCcpaAccepted(Boolean ccpaAccepted) {
+        this.ccpaAccepted = ccpaAccepted;
+    }
+
+    public LocalDateTime getCcpaAcceptedAt() {
+        return ccpaAcceptedAt;
+    }
+
+    public void setCcpaAcceptedAt(LocalDateTime ccpaAcceptedAt) {
+        this.ccpaAcceptedAt = ccpaAcceptedAt;
+    }
+
+    // Additional methods for compatibility
+    public Boolean getIsAdmin() {
+        return role == Role.ADMIN;
+    }
+
+    public Boolean getIsApproved() {
+        return true; // Default implementation
+    }
+
+    public User getParent() {
+        return null; // Default implementation
+    }
+
+    public String getJob() {
+        return ""; // Default implementation
+    }
+
+    public String getLevel() {
+        return ""; // Default implementation
+    }
+
+    public Boolean getIsActive() {
+        return enabled;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstname = firstName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastname = lastName;
+    }
+
+    public void setUsername(String username) {
+        this.email = username;
+    }
+
+    public void setParent(User parent) {
+        // Default implementation
+    }
+
+    public void setJob(String job) {
+        // Default implementation
+    }
+
+    public void setLevel(String level) {
+        // Default implementation
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.enabled = isActive != null ? isActive : false;
+    }
+
+    public void setIsApproved(Boolean isApproved) {
+        // Default implementation
+    }
+
+    public void setBigger(Boolean bigger) {
+        // Default implementation
+    }
+
+    public Boolean getBigger() {
+        return false; // Default implementation
+    }
+
+    public List<User> getSubUsers() {
+        return new ArrayList<>(); // Default implementation
+    }
+
+    public Long countByParentId(Long parentId) {
+        return 0L; // Default implementation
+    }
+
+    public List<User> findByParentId(Long parentId) {
+        return new ArrayList<>(); // Default implementation
+    }
+
+    public Boolean existsByUsername(String username) {
+        return false; // Default implementation
     }
 
     @PrePersist

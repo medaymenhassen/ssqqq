@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +21,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)55i9(p8rgga#t*@)gp&7r9mvyq=jw0(^k-%rrzm#ms@v-g4m@'
+# SECRET_KEY is loaded from database-config.json
+import json
+import os
+
+def get_secret_key():
+    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', '..', 'database-config.json')
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+            return config.get('django_secret_key', 'django-insecure-default-key')
+    return 'django-insecure-default-key'
+
+SECRET_KEY = get_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -134,6 +147,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",
     "http://127.0.0.1:4200",
+    "https://cognitiex.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -146,4 +160,27 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    )
+}
+
+# JWT settings
+import json
+import os
+
+def get_jwt_secret():
+    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', '..', 'database-config.json')
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+            return config.get('django_jwt_secret', 'django-default-jwt-secret')
+    return 'django-default-jwt-secret'
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'SIGNING_KEY': get_jwt_secret(),
+    'ALGORITHM': 'HS256',
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }

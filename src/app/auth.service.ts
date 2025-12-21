@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import { environment } from '../environments/environment';
 
 export interface User {
   id: number;
@@ -28,14 +29,16 @@ export interface RegisterRequest {
   lastname: string;
   email: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword?: string;
+  rgpdAccepted: boolean;
+  ccpaAccepted: boolean;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8080/api';
+  private apiUrl = environment.apiUrl;
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser = this.currentUserSubject.asObservable();
 

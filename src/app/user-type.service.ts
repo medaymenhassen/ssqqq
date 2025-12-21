@@ -2,12 +2,15 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../environments/environment';
 
 export interface UserType {
   id: number;
-  nom: string;
-  description: string;
-  special: boolean;
+  nameFr: string;
+  nameEn: string;
+  descFr: string;
+  descEn: string;
+  bigger: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,16 +26,18 @@ export interface Document {
 }
 
 export interface UserTypeRequest {
-  nom: string;
-  description: string;
-  special: boolean;
+  nameFr: string;
+  nameEn: string;
+  descFr: string;
+  descEn: string;
+  bigger: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserTypeService {
-  private apiUrl = 'http://localhost:8080/api';
+  private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
 
@@ -57,7 +62,9 @@ export class UserTypeService {
   // Create a new user type
   createUserType(request: UserTypeRequest): Observable<UserType> {
     return this.http.post<UserType>(`${this.apiUrl}/user-types`, request, {
-      headers: this.getAuthHeaders()
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json'
+      })
     }).pipe(
       catchError(this.handleError)
     );
@@ -65,45 +72,15 @@ export class UserTypeService {
 
   // Get all user types
   getAllUserTypes(): Observable<UserType[]> {
-    return this.http.get<UserType[]>(`${this.apiUrl}/user-types`, {
-      headers: this.getAuthHeaders()
-    }).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  // Get special user types only
-  getSpecialUserTypes(): Observable<UserType[]> {
-    return this.http.get<UserType[]>(`${this.apiUrl}/user-types/special`, {
-      headers: this.getAuthHeaders()
-    }).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  // Get normal user types only
-  getNormalUserTypes(): Observable<UserType[]> {
-    return this.http.get<UserType[]>(`${this.apiUrl}/user-types/normal`, {
-      headers: this.getAuthHeaders()
-    }).pipe(
+    // This endpoint is publicly accessible, so we don't need to send auth headers
+    return this.http.get<UserType[]>(`${this.apiUrl}/user-types`).pipe(
       catchError(this.handleError)
     );
   }
 
   // Get user type by ID
   getUserTypeById(id: number): Observable<UserType> {
-    return this.http.get<UserType>(`${this.apiUrl}/user-types/${id}`, {
-      headers: this.getAuthHeaders()
-    }).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  // Get documents for a user type
-  getDocumentsByUserType(id: number): Observable<{userTypeId: number, documentsCount: number, documents: Document[]}> {
-    return this.http.get<{userTypeId: number, documentsCount: number, documents: Document[]}>(`${this.apiUrl}/user-types/${id}/documents`, {
-      headers: this.getAuthHeaders()
-    }).pipe(
+    return this.http.get<UserType>(`${this.apiUrl}/user-types/${id}`).pipe(
       catchError(this.handleError)
     );
   }

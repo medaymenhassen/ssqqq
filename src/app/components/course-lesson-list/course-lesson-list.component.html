@@ -1,0 +1,43 @@
+<div class="container">
+  <div class="header">
+    <h2>Course Lessons</h2>
+    <a routerLink="/course-lessons/create" class="btn btn-primary">Create New Lesson</a>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    Loading...
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && lessons.length === 0" class="no-data">
+    No course lessons found.
+  </div>
+
+  <div *ngIf="!loading && lessons.length > 0" class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Description</th>
+          <th>Video URL</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let lesson of lessons">
+          <td>{{ lesson.title }}</td>
+          <td>{{ lesson.description }}</td>
+          <td>{{ lesson.videoUrl }}</td>
+          <td class="actions">
+            <a [routerLink]="['/course-lessons', lesson.id, 'edit']" class="btn btn-sm btn-secondary">Edit</a>
+            <button (click)="deleteCourseLesson(lesson.id)" class="btn btn-sm btn-danger">Delete</button>
+            <a [routerLink]="['/course-lessons', lesson.id, 'answers']" class="btn btn-sm btn-info">Manage Answers</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

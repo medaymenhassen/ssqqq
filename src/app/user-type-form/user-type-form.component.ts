@@ -24,9 +24,11 @@ export class UserTypeFormComponent implements OnInit {
     private router: Router
   ) {
     this.userTypeForm = this.fb.group({
-      nom: ['', [Validators.required, Validators.minLength(2)]],
-      description: ['', [Validators.maxLength(500)]],
-      special: [false]
+      nameFr: ['', [Validators.required, Validators.minLength(2)]],
+      nameEn: ['', [Validators.required, Validators.minLength(2)]],
+      descFr: ['', [Validators.maxLength(500)]],
+      descEn: ['', [Validators.maxLength(500)]],
+      bigger: ['middle', [Validators.required]]
     });
   }
 
@@ -44,9 +46,11 @@ export class UserTypeFormComponent implements OnInit {
     this.userTypeService.getUserTypeById(id).subscribe({
       next: (userType) => {
         this.userTypeForm.patchValue({
-          nom: userType.nom,
-          description: userType.description,
-          special: userType.special
+          nameFr: userType.nameFr,
+          nameEn: userType.nameEn,
+          descFr: userType.descFr,
+          descEn: userType.descEn,
+          bigger: userType.bigger
         });
         this.loading = false;
       },
