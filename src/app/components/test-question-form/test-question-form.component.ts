@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService, TestQuestion, CourseTest, CourseLesson } from '../../services/test.service';
+import { AuthService, User } from '../../auth.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -15,6 +16,7 @@ export class TestQuestionFormComponent implements OnInit {
   questionForm: FormGroup;
   isEditMode: boolean = false;
   questionID: number | null = null;
+  courseTestID: number | null = null;
   loading: boolean = false;
   error: string = '';
   courseTests: CourseTest[] = [];
@@ -25,9 +27,12 @@ export class TestQuestionFormComponent implements OnInit {
     { value: 'OPEN_ENDED', label: 'Open Ended Question' }
   ];
 
+  currentUser: User | null = null;
+
   constructor(
     private fb: FormBuilder,
     private testService: TestService,
+    private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router
   ) {
@@ -35,22 +40,33 @@ export class TestQuestionFormComponent implements OnInit {
       questionText: ['', [Validators.required, Validators.minLength(2)]],
       questionOrder: ['', [Validators.required, Validators.min(1)]],
       points: [1, [Validators.min(1)]],
-      questionType: ['OPEN_ENDED', [Validators.required]],
-      courseTestId: [''],
-      courseLessonId: ['']
+      questionType: ['OPEN_ENDED', [Validators.required]]
     });
   }
 
   ngOnInit(): void {
+    // Get current user
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+    });
+
     // Load course tests and lessons
     this.loadCourseTests();
     this.loadCourseLessons();
     
     const id = this.route.snapshot.paramMap.get('id');
+    const courseTestId = this.route.snapshot.paramMap.get('courseTestId');
+    
     if (id) {
       this.isEditMode = true;
       this.questionID = +id;
       this.loadQuestion(this.questionID);
+    } else if (courseTestId) {
+      // Creating a new question for a specific course test
+      this.courseTestID = +courseTestId;
+      this.questionForm.patchValue({
+        courseTestId: this.courseTestID
+      });
     }
   }
   
@@ -85,8 +101,7 @@ export class TestQuestionFormComponent implements OnInit {
           questionOrder: question.questionOrder,
           points: question.points,
           questionType: question.questionType,
-          courseTestId: question.courseTestId,
-          courseLessonId: question.courseLessonId || ''
+          courseTestId: question.courseTestId
         });
         this.loading = false;
       },
@@ -104,6 +119,14 @@ export class TestQuestionFormComponent implements OnInit {
       this.error = '';
 
       const question: TestQuestion = this.questionForm.value;
+      // Add courseTestId when creating a new question
+      if (!this.isEditMode && this.courseTestID) {
+        question.courseTestId = this.courseTestID;
+      }
+      // Add userId when creating a new question
+      if (!this.isEditMode && this.currentUser) {
+        question.userId = this.currentUser.id;
+      }
 
       if (this.isEditMode && this.questionID) {
         // Update existing question

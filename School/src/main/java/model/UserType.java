@@ -24,7 +24,7 @@ public class UserType {
     private String descEn;
     
     @Column(name = "bigger", nullable = false)
-    private String bigger = "middle";
+    private String bigger = "individual";
     
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

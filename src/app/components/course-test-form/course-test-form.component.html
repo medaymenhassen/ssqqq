@@ -35,14 +35,19 @@
     </div>
     
     <div class="form-group">
-      <label for="courseId">Course ID (Optional)</label>
-      <input type="number" id="courseId" formControlName="courseId" class="form-control">
+      <label for="courseId">Course (Optional)</label>
+      <select id="courseId" formControlName="courseId" class="form-control">
+        <option value="">Select a course</option>
+      </select>
       <small class="form-text text-muted">Link this test to a specific course</small>
     </div>
     
     <div class="form-group">
-      <label for="lessonId">Lesson ID (Optional)</label>
-      <input type="number" id="lessonId" formControlName="lessonId" class="form-control">
+      <label for="lessonId">Lesson (Optional)</label>
+      <select id="lessonId" formControlName="lessonId" class="form-control">
+        <option value="">Select a lesson</option>
+        <option *ngFor="let lesson of courseLessons" [value]="lesson.id">{{ lesson.title }}</option>
+      </select>
       <small class="form-text text-muted">Link this test to a specific lesson</small>
     </div>
     

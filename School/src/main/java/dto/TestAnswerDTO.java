@@ -11,6 +11,7 @@ public class TestAnswerDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long questionId;
+    private Long userId;
 
     // Constructors
     public TestAnswerDTO() {}
@@ -78,5 +79,13 @@ public class TestAnswerDTO {
 
     public void setQuestionId(Long questionId) {
         this.questionId = questionId;
+    }
+    
+    public Long getUserId() {
+        return userId;
+    }
+    
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

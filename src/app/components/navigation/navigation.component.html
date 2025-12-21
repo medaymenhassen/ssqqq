@@ -9,7 +9,8 @@
       <a routerLink="/course-tests" class="nav-link">Course Tests</a>
       <a routerLink="/course-lessons" class="nav-link">Course Lessons</a>
       <a routerLink="/data" class="nav-link">Data</a>
-      <a routerLink="/login" class="nav-link">Login</a>
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-link">Login</a>
+      <a *ngIf="isLoggedIn" (click)="onLogout()" class="nav-link">Logout</a>
     </div>
     
     <div class="nav-toggle" (click)="toggleMenu()">

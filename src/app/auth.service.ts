@@ -5,6 +5,17 @@ import { catchError, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from '../environments/environment';
 
+export interface UserType {
+  id: number;
+  nameFr: string;
+  nameEn: string;
+  descFr: string;
+  descEn: string;
+  bigger: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: number;
   firstname: string;
@@ -12,6 +23,7 @@ export interface User {
   email: string;
   role: string;
   enabled: boolean;
+  userType?: UserType;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,6 +130,17 @@ export class AuthService {
     }
   }
 
+  // Get authorization headers
+  private getAuthHeaders(): HttpHeaders {
+    const token = this.getAccessToken();
+    if (token) {
+      return new HttpHeaders({
+        'Authorization': `Bearer ${token}`
+      });
+    }
+    return new HttpHeaders();
+  }
+
   // Get access token
   getAccessToken(): string | null {
     if (typeof window !== 'undefined') {
@@ -142,6 +165,24 @@ export class AuthService {
   // Get current user
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
+  }
+
+  // Get user by ID
+  getUserById(id: number): Observable<User> {
+    const headers = this.getAuthHeaders();
+    return this.http.get<User>(`${this.apiUrl}/users/${id}`, { headers })
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  // Get all users
+  getAllUsers(): Observable<User[]> {
+    const headers = this.getAuthHeaders();
+    return this.http.get<User[]>(`${this.apiUrl}/users`, { headers })
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
   // Refresh token

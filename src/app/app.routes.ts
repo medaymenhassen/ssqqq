@@ -14,6 +14,7 @@ import { TestAnswerFormComponent } from './components/test-answer-form/test-answ
 import { QuestionAnswerManagerComponent } from './components/question-answer-manager/question-answer-manager.component';
 import { CourseLessonListComponent } from './components/course-lesson-list/course-lesson-list.component';
 import { CourseLessonFormComponent } from './components/course-lesson-form/course-lesson-form.component';
+import { UserProfileComponent } from './user-profile/user-profile.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/bodyanalytics', pathMatch: 'full' },
@@ -30,6 +31,7 @@ export const routes: Routes = [
   { path: 'course-tests/:id/edit', component: CourseTestFormComponent },
   { path: 'test-questions', component: TestQuestionListComponent },
   { path: 'test-questions/create', component: TestQuestionFormComponent },
+  { path: 'test-questions/create/:courseTestId', component: TestQuestionFormComponent },
   { path: 'test-questions/:id/edit', component: TestQuestionFormComponent },
   { path: 'test-questions/:id/answers', component: QuestionAnswerManagerComponent },
   { path: 'test-answers/create', component: TestAnswerFormComponent },
@@ -37,5 +39,7 @@ export const routes: Routes = [
   { path: 'course-lessons', component: CourseLessonListComponent },
   { path: 'course-lessons/create', component: CourseLessonFormComponent },
   { path: 'course-lessons/:id/edit', component: CourseLessonFormComponent },
+  { path: 'profile', component: UserProfileComponent },
+  { path: 'profile/:id', component: UserProfileComponent },
   { path: '**', redirectTo: '/bodyanalytics' }
 ];

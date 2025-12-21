@@ -37,6 +37,26 @@
         <button class="btn btn-secondary" *ngIf="isVideoInitialized" (click)="stopCamera()">
           ⏹️ Arrêter
         </button>
+        <button class="btn btn-info" *ngIf="temporaryVideoBlob" (click)="downloadTemporaryVideo()">
+          📥 Télécharger Vidéo
+        </button>
+        <div class="dropdown" *ngIf="isVideoInitialized" #csvDropdown>
+          <button class="btn btn-success dropdown-toggle" type="button" (click)="toggleCsvDropdown()" aria-expanded="false">
+            📊 Exporter Données CSV
+          </button>
+          <ul class="dropdown-menu" [class.show]="isCsvDropdownOpen" aria-labelledby="csvDropdown">
+            <li><a class="dropdown-item" (click)="downloadPoseCSV()">Pose Data (Download)</a></li>
+            <li><a class="dropdown-item" (click)="uploadPoseCSV()">Pose Data (Upload)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" (click)="downloadFaceCSV()">Face Data (Download)</a></li>
+            <li><a class="dropdown-item" (click)="uploadFaceCSV()">Face Data (Upload)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" (click)="downloadHandsCSV()">Hands Data (Download)</a></li>
+            <li><a class="dropdown-item" (click)="uploadHandsCSV()">Hands Data (Upload)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" (click)="downloadAllCSV()">Tout Exporter (Download)</a></li>
+            <li><a class="dropdown-item" (click)="uploadAllCSV()">Tout Exporter (Upload)</a></li>
+          </ul>        </div>
       </div>
     </section>
 

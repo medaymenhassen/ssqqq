@@ -1,5 +1,7 @@
 package com.auth.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -40,6 +42,13 @@ public class CourseLesson {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @Column(name = "is_service")
+    private Boolean isService = false;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
     
     // Constructors
     public CourseLesson() {}
@@ -147,5 +156,21 @@ public class CourseLesson {
     
     public void setLessonOrder(Integer lessonOrder) {
         this.lessonOrder = lessonOrder;
+    }
+    
+    public Boolean getIsService() {
+        return isService;
+    }
+    
+    public void setIsService(Boolean isService) {
+        this.isService = isService;
+    }
+    
+    public User getUser() {
+        return user;
+    }
+    
+    public void setUser(User user) {
+        this.user = user;
     }
 }

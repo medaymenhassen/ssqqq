@@ -28,7 +28,7 @@ export class UserTypeFormComponent implements OnInit {
       nameEn: ['', [Validators.required, Validators.minLength(2)]],
       descFr: ['', [Validators.maxLength(500)]],
       descEn: ['', [Validators.maxLength(500)]],
-      bigger: ['middle', [Validators.required]]
+      bigger: ['individual', [Validators.required]]
     });
   }
 

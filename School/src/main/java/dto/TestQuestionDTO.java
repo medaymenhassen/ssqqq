@@ -13,6 +13,7 @@ public class TestQuestionDTO {
     private LocalDateTime updatedAt;
     private Long courseTestId;
     private Long courseLessonId;
+    private Long userId;
     private List<TestAnswerDTO> answers;
 
     // Constructors
@@ -97,5 +98,13 @@ public class TestQuestionDTO {
         
     public void setAnswers(List<TestAnswerDTO> answers) {
         this.answers = answers;
+    }
+    
+    public Long getUserId() {
+        return userId;
+    }
+    
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

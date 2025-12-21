@@ -12,6 +12,8 @@ public class CourseLessonDTO {
     private String contentDescription;
     private Integer displayOrder;
     private Integer lessonOrder;
+    private Boolean isService;
+    private Long userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -105,5 +107,21 @@ public class CourseLessonDTO {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public Boolean getIsService() {
+        return isService;
+    }
+    
+    public void setIsService(Boolean isService) {
+        this.isService = isService;
+    }
+    
+    public Long getUserId() {
+        return userId;
+    }
+    
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

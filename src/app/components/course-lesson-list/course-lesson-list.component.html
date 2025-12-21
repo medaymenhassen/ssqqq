@@ -23,6 +23,7 @@
           <th>Title</th>
           <th>Description</th>
           <th>Video URL</th>
+          <th>Documents</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -31,10 +32,14 @@
           <td>{{ lesson.title }}</td>
           <td>{{ lesson.description }}</td>
           <td>{{ lesson.videoUrl }}</td>
+          <td>
+            <span *ngIf="lesson.videoUrl" class="document-indicator video">🎥</span>
+            <span *ngIf="lesson.animation3dUrl" class="document-indicator model">🎮</span>
+          </td>
           <td class="actions">
             <a [routerLink]="['/course-lessons', lesson.id, 'edit']" class="btn btn-sm btn-secondary">Edit</a>
             <button (click)="deleteCourseLesson(lesson.id)" class="btn btn-sm btn-danger">Delete</button>
-            <a [routerLink]="['/course-lessons', lesson.id, 'answers']" class="btn btn-sm btn-info">Manage Answers</a>
+            <a [routerLink]="['/test-questions']" [queryParams]="{lessonId: lesson.id}" class="btn btn-sm btn-info">Manage Questions</a>
           </td>
         </tr>
       </tbody>

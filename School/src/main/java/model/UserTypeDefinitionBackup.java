@@ -38,7 +38,7 @@ public class UserTypeDefinitionBackup {
     private Boolean showInSelection = true;
     
     @Column(name = "bigger", nullable = false)
-    private String bigger = "middle";
+    private String bigger = "individual";
     
     @Column(name = "company_type")
     private String companyType;

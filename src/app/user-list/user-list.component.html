@@ -12,6 +12,7 @@
           <th>Rôle</th>
           <th>Statut</th>
           <th>Date de création</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -27,9 +28,12 @@
             </span>
           </td>
           <td>{{ user.createdAt | date:'short' }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" (click)="viewUserProfile(user.id)">Voir Profil</button>
+          </td>
         </tr>
         <tr *ngIf="users.length === 0">
-          <td colspan="7" class="text-center">Aucun utilisateur trouvé</td>
+          <td colspan="8" class="text-center">Aucun utilisateur trouvé</td>
         </tr>
       </tbody>
     </table>

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { TestService, TestQuestion, TestAnswer } from '../../services/test.service';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-test-question-list',
@@ -15,15 +15,37 @@ export class TestQuestionListComponent implements OnInit {
   loading: boolean = false;
   error: string = '';
 
-  constructor(private testService: TestService) {}
+  constructor(private testService: TestService, private route: ActivatedRoute) {}
 
   ngOnInit(): void {
-    this.loadTestQuestions();
+    this.route.queryParams.subscribe(params => {
+      if (params['lessonId']) {
+        // Filter questions by lessonId
+        this.loadTestQuestionsByLessonId(params['lessonId']);
+      } else {
+        this.loadTestQuestions();
+      }
+    });
   }
 
   loadTestQuestions(): void {
     this.loading = true;
     this.testService.getAllTestQuestions().subscribe({
+      next: (questions) => {
+        this.questions = questions;
+        this.loading = false;
+      },
+      error: (error) => {
+        this.error = 'Error loading test questions';
+        this.loading = false;
+        console.error(error);
+      }
+    });
+  }
+
+  loadTestQuestionsByLessonId(lessonId: string): void {
+    this.loading = true;
+    this.testService.getTestQuestionsByLessonId(parseInt(lessonId)).subscribe({
       next: (questions) => {
         this.questions = questions;
         this.loading = false;

@@ -85,4 +85,19 @@ export class DocumentService {
       headers: this.getAuthHeaders()
     });
   }
+  
+  // Upload document for lesson or body analysis
+  uploadDocumentForLessonOrAnalysis(userId: number, context: string, file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('userId', userId.toString());
+    formData.append('context', context);
+    formData.append('file', file);
+
+    // Create headers without Content-Type for multipart/form-data
+    const headers = this.getAuthHeaders().delete('Content-Type');
+    
+    return this.http.post(`${this.apiUrl}/documents/upload-for-lesson-or-analysis`, formData, {
+      headers: headers
+    });
+  }
 }

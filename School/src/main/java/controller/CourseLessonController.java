@@ -49,4 +49,28 @@ public class CourseLessonController {
         courseLessonService.deleteCourseLesson(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/user/{userId}/completed")
+    public List<CourseLessonDTO> getCompletedLessonsForUser(@PathVariable Long userId) {
+        return courseLessonService.getCompletedLessonsForUser(userId);
+    }
+    
+    @GetMapping("/user/{userId}")
+    public List<CourseLessonDTO> getLessonsForUser(@PathVariable Long userId) {
+        return courseLessonService.getLessonsForUser(userId);
+    }
+
+    @PostMapping("/user/{userId}/lesson/{lessonId}/complete")
+    public ResponseEntity<?> markLessonAsCompleted(@PathVariable Long userId, @PathVariable Long lessonId) {
+        try {
+            boolean isNewlyCompleted = courseLessonService.markLessonAsCompleted(userId, lessonId);
+            if (isNewlyCompleted) {
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.noContent().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

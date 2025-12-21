@@ -20,6 +20,7 @@ export interface Document {
   name: string;
   description: string;
   filePath: string;
+  userId?: number; // User who uploaded the document
   userTypeId: number;
   createdAt: string;
   updatedAt: string;

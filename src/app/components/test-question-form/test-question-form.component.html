@@ -36,32 +36,16 @@
       </div>
     </div>
     
-    <div class="form-group">
-      <label for="courseTestId">Course Test (Optional)</label>
-      <select id="courseTestId" formControlName="courseTestId" class="form-control">
-        <option value="">Select a course test</option>
-        <option *ngFor="let courseTest of courseTests" [value]="courseTest.id">{{ courseTest.title }}</option>
-      </select>
-      <small class="form-text text-muted">Link this question to a specific course test</small>
-    </div>
-    
-    <div class="form-group">
-      <label for="courseLessonId">Course Lesson (Optional)</label>
-      <select id="courseLessonId" formControlName="courseLessonId" class="form-control">
-        <option value="">Select a course lesson</option>
-        <option *ngFor="let courseLesson of courseLessons" [value]="courseLesson.id">{{ courseLesson.title }}</option>
-      </select>
-      <small class="form-text text-muted">Link this question to a specific course lesson</small>
-    </div>
+
     
     <div class="lesson-features">
-      <h4>Lesson Features</h4>
-      <p>When linked to a course lesson, this question will be associated with:</p>
+      <h4>Test Features</h4>
+      <p>When linked to a course test, this question will be associated with:</p>
       <ul>
-        <li>Video content</li>
-        <li>3D animation</li>
-        <li>Course materials with titles and descriptions</li>
-        <li>Proper ordering within the lesson</li>
+        <li>Specific course content</li>
+        <li>User progress tracking</li>
+        <li>Assessment scoring</li>
+        <li>Proper ordering within the test</li>
       </ul>
     </div>
     

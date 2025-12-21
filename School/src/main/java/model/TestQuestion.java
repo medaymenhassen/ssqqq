@@ -1,5 +1,8 @@
 package com.auth.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,6 +51,11 @@ public class TestQuestion {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    
+    @JsonBackReference
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestAnswer> answers = new ArrayList<>();
     
@@ -156,5 +164,13 @@ public class TestQuestion {
     
     public void setCourseLesson(CourseLesson courseLesson) {
         this.courseLesson = courseLesson;
+    }
+    
+    public User getUser() {
+        return user;
+    }
+    
+    public void setUser(User user) {
+        this.user = user;
     }
 }

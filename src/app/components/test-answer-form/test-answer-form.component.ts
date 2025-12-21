@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService, TestAnswer } from '../../services/test.service';
+import { AuthService, User } from '../../auth.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -19,9 +20,12 @@ export class TestAnswerFormComponent implements OnInit {
   error: string = '';
   selectedFile: File | null = null;
 
+  currentUser: User | null = null;
+
   constructor(
     private fb: FormBuilder,
     private testService: TestService,
+    private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router
   ) {
@@ -36,6 +40,11 @@ export class TestAnswerFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Get current user
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+    });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode = true;
@@ -83,6 +92,10 @@ export class TestAnswerFormComponent implements OnInit {
         ...formValue,
         isLogical: formValue.isLogical === 'true',
         isCorrect: formValue.isCorrect === 'true'
+      };
+      // Add userId when creating a new answer
+      if (!this.isEditMode && this.currentUser) {
+        answer.userId = this.currentUser.id;
       };
 
       if (this.isEditMode && this.answerID) {

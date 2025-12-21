@@ -25,7 +25,7 @@ export interface TestQuestion {
   createdAt: string;
   updatedAt: string;
   courseTestId: number;
-  courseLessonId?: number; // Optional course lesson ID
+  userId?: number; // User who created the question
   answers: TestAnswer[];
 }
 
@@ -39,6 +39,8 @@ export interface CourseLesson {
   contentDescription: string;
   displayOrder: number;
   lessonOrder: number;
+  isService: boolean;
+  userId?: number; // User who created the lesson
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +54,7 @@ export interface TestAnswer {
   createdAt: string;
   updatedAt: string;
   questionId: number;
+  userId?: number; // User who created the answer
 }
 
 @Injectable({
@@ -113,6 +116,10 @@ export class TestService {
   // TestQuestion methods
   getAllTestQuestions(): Observable<TestQuestion[]> {
     return this.http.get<TestQuestion[]>(`${this.apiUrl}/tests/questions`);
+  }
+
+  getTestQuestionsByLessonId(lessonId: number): Observable<TestQuestion[]> {
+    return this.http.get<TestQuestion[]>(`${this.apiUrl}/tests/questions/lesson/${lessonId}`);
   }
 
   getTestQuestionById(id: number): Observable<TestQuestion> {
@@ -191,6 +198,23 @@ export class TestService {
   
   deleteCourseLesson(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/course-lessons/${id}`, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  // Get all lessons for a user
+  getLessonsForUser(userId: number): Observable<CourseLesson[]> {
+    return this.http.get<CourseLesson[]>(`${this.apiUrl}/course-lessons/user/${userId}`);
+  }
+  
+  // Get completed lessons for a user
+  getCompletedLessonsForUser(userId: number): Observable<CourseLesson[]> {
+    return this.http.get<CourseLesson[]>(`${this.apiUrl}/course-lessons/user/${userId}/completed`);
+  }
+
+  // Mark a lesson as completed for a user
+  markLessonAsCompleted(userId: number, lessonId: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/course-lessons/user/${userId}/lesson/${lessonId}/complete`, {}, {
       headers: this.getAuthHeaders()
     });
   }

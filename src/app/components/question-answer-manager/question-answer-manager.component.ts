@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService, TestQuestion, TestAnswer } from '../../services/test.service';
+import { AuthService, User } from '../../auth.service';
 import { CommonModule } from '@angular/common';
 import { lastValueFrom } from 'rxjs';
 
@@ -21,9 +22,12 @@ export class QuestionAnswerManagerComponent implements OnInit {
   success: string = '';
   selectedFiles: Map<number, File[]> = new Map();
 
+  currentUser: User | null = null;
+
   constructor(
     private fb: FormBuilder,
     private testService: TestService,
+    private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router
   ) {
@@ -33,6 +37,11 @@ export class QuestionAnswerManagerComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Get current user
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+    });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.questionId = +id;
@@ -133,6 +142,11 @@ export class QuestionAnswerManagerComponent implements OnInit {
           updatedAt: new Date().toISOString(),
           questionId: this.questionId!
         };
+        
+        // Add userId when creating a new answer
+        if (!answerData.id && this.currentUser) {
+          answer.userId = this.currentUser.id;
+        }
         
         if (answerData.id) {
           // Update existing answer

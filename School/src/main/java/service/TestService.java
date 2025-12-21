@@ -6,11 +6,15 @@ import com.auth.dto.TestAnswerDTO;
 import com.auth.model.CourseTest;
 import com.auth.model.TestQuestion;
 import com.auth.model.TestAnswer;
+import com.auth.model.User;
 import com.auth.repository.CourseTestRepository;
 import com.auth.repository.TestQuestionRepository;
 import com.auth.repository.TestAnswerRepository;
 import com.auth.repository.CourseRepository;
+import com.auth.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -33,6 +37,25 @@ public class TestService {
 
     @Autowired
     private TestMapperService testMapperService;
+    
+    @Autowired
+    private UserService userService;
+    
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof org.springframework.security.core.userdetails.User) {
+                String username = ((org.springframework.security.core.userdetails.User) principal).getUsername();
+                return userService.findByEmail(username).orElse(null);
+            } else if (principal instanceof String) {
+                // Sometimes the principal is just the username/email as a string
+                String username = (String) principal;
+                return userService.findByEmail(username).orElse(null);
+            }
+        }
+        return null;
+    }
 
     // CourseTest methods
     public List<CourseTest> getAllCourseTests() {
@@ -108,6 +131,22 @@ public class TestService {
 
     public List<TestQuestionDTO> getAllTestQuestionsWithDTO() {
         return testQuestionRepository.findAll().stream()
+                .peek(question -> {
+                    // Load answers for each question
+                    List<TestAnswer> answers = testAnswerRepository.findByQuestionId(question.getId());
+                    question.setAnswers(answers);
+                })
+                .map(testMapperService::toTestQuestionDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<TestQuestionDTO> getTestQuestionsByLessonIdWithDTO(Long lessonId) {
+        return testQuestionRepository.findByCourseLessonId(lessonId).stream()
+                .peek(question -> {
+                    // Load answers for each question
+                    List<TestAnswer> answers = testAnswerRepository.findByQuestionId(question.getId());
+                    question.setAnswers(answers);
+                })
                 .map(testMapperService::toTestQuestionDTO)
                 .collect(Collectors.toList());
     }
@@ -134,6 +173,14 @@ public class TestService {
         if (testQuestionDTO.getCourseTestId() != null) {
             courseTestRepository.findById(testQuestionDTO.getCourseTestId())
                     .ifPresent(testQuestion::setCourseTest);
+        }
+        // Set the current user
+        User currentUser = getCurrentUser();
+        if (currentUser != null) {
+            testQuestion.setUser(currentUser);
+        } else {
+            // If no current user, throw an exception
+            throw new RuntimeException("Cannot create test question without an authenticated user");
         }
         TestQuestion savedTestQuestion = testQuestionRepository.save(testQuestion);
         return testMapperService.toTestQuestionDTO(savedTestQuestion);
@@ -165,6 +212,7 @@ public class TestService {
             courseTestRepository.findById(testQuestionDTO.getCourseTestId())
                     .ifPresent(testQuestion::setCourseTest);
         }
+        // Preserve the existing user
         
         TestQuestion updatedTestQuestion = testQuestionRepository.save(testQuestion);
         return testMapperService.toTestQuestionDTO(updatedTestQuestion);
@@ -205,6 +253,11 @@ public class TestService {
             testQuestionRepository.findById(testAnswerDTO.getQuestionId())
                     .ifPresent(testAnswer::setQuestion);
         }
+        // Set the current user
+        User currentUser = getCurrentUser();
+        if (currentUser != null) {
+            testAnswer.setUser(currentUser);
+        }
         TestAnswer savedTestAnswer = testAnswerRepository.save(testAnswer);
         return testMapperService.toTestAnswerDTO(savedTestAnswer);
     }
@@ -230,6 +283,7 @@ public class TestService {
             testQuestionRepository.findById(testAnswerDTO.getQuestionId())
                     .ifPresent(testAnswer::setQuestion);
         }
+        // Preserve the existing user
         
         TestAnswer updatedTestAnswer = testAnswerRepository.save(testAnswer);
         return testMapperService.toTestAnswerDTO(updatedTestAnswer);

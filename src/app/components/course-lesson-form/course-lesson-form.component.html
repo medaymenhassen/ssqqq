@@ -21,11 +21,19 @@
     <div class="form-group">
       <label for="videoUrl">Video URL</label>
       <input type="text" id="videoUrl" formControlName="videoUrl" class="form-control">
+      <div class="file-upload">
+        <label>Upload Video File (MP4)</label>
+        <input type="file" (change)="onVideoFileSelected($event)" accept="video/mp4">
+      </div>
     </div>
     
     <div class="form-group">
       <label for="animation3dUrl">3D Animation URL</label>
       <input type="text" id="animation3dUrl" formControlName="animation3dUrl" class="form-control">
+      <div class="file-upload">
+        <label>Upload 3D Model (GLB)</label>
+        <input type="file" (change)="on3DModelFileSelected($event)" accept=".glb,model/gltf-binary">
+      </div>
     </div>
     
     <div class="form-group">
@@ -49,6 +57,13 @@
     <div class="form-group">
       <label for="lessonOrder">Lesson Order</label>
       <input type="number" id="lessonOrder" formControlName="lessonOrder" class="form-control">
+    </div>
+    
+    <div class="form-group">
+      <label>
+        <input type="checkbox" formControlName="isService">
+        Is Service
+      </label>
     </div>
     
     <div class="form-actions">

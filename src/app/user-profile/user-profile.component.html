@@ -1,0 +1,130 @@
+<div class="user-profile-container">
+  <h2>Profil Utilisateur</h2>
+  
+  <!-- User Information -->
+  <div class="user-info-section" *ngIf="currentUser">
+    <h3>Informations Personnelles</h3>
+    <div class="user-details">
+      <p><strong>Nom:</strong> {{ currentUser.firstname }} {{ currentUser.lastname }}</p>
+      <p><strong>Email:</strong> {{ currentUser.email }}</p>
+      <p><strong>Type d'utilisateur:</strong> {{ currentUser.userType?.nameFr || 'Non défini' }}</p>
+      <p><strong>Statut:</strong> 
+        <span class="status-badge" [class.active]="currentUser.enabled" [class.inactive]="!currentUser.enabled">
+          {{ currentUser.enabled ? 'Actif' : 'Inactif' }}
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Completed Lessons Section -->
+  <div class="lessons-section">
+    <h3>Leçons Complétées</h3>
+    
+    <!-- Services -->
+    <div class="lesson-category">
+      <h4>Services</h4>
+      <div class="lessons-grid" *ngIf="serviceLessons.length > 0">
+        <div class="lesson-card" *ngFor="let lesson of serviceLessons">
+          <h5>{{ lesson.title }}</h5>
+          <p>{{ lesson.description }}</p>
+          <div class="lesson-meta">
+            <span class="badge service">Service</span>
+            <span class="completion-date">Complété le: {{ lesson.updatedAt | date:'short' }}</span>
+          </div>
+          <button class="btn btn-sm btn-outline-primary" (click)="markLessonAsCompleted(lesson.id)" *ngIf="currentUser && !route.snapshot.paramMap.get('id')">Marquer comme terminé</button>
+        </div>
+      </div>
+      <div class="no-lessons" *ngIf="serviceLessons.length === 0">
+        <p>Aucun service complété.</p>
+      </div>
+    </div>
+    
+    <!-- Formations -->
+    <div class="lesson-category">
+      <h4>Formations</h4>
+      <div class="lessons-grid" *ngIf="formationLessons.length > 0">
+        <div class="lesson-card" *ngFor="let lesson of formationLessons">
+          <h5>{{ lesson.title }}</h5>
+          <p>{{ lesson.description }}</p>
+          <div class="lesson-meta">
+            <span class="badge formation">Formation</span>
+            <span class="completion-date">Complété le: {{ lesson.updatedAt | date:'short' }}</span>
+          </div>
+          <button class="btn btn-sm btn-outline-primary" (click)="markLessonAsCompleted(lesson.id)" *ngIf="currentUser && !route.snapshot.paramMap.get('id')">Marquer comme terminé</button>
+        </div>
+      </div>
+      <div class="no-lessons" *ngIf="formationLessons.length === 0">
+        <p>Aucune formation complétée.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Upload Section -->
+  <div class="document-section" *ngIf="currentUser && currentUser.userType && !route.snapshot.paramMap.get('id')">
+    <h3>Documents pour {{ currentUser.userType.nameFr }}</h3>
+    <p>Veuillez télécharger les documents requis pour votre type d'utilisateur. Ces documents seront examinés par un administrateur.</p>
+    
+    <form [formGroup]="documentForm" (ngSubmit)="onSubmitDocuments()" class="document-upload-form">
+      <div class="form-group">
+        <label for="documents">Sélectionner des fichiers</label>
+        <input 
+          type="file" 
+          id="documents" 
+          multiple 
+          (change)="onFileSelect($event)"
+          class="form-control">
+        <small class="form-text text-muted">Vous pouvez sélectionner plusieurs fichiers (images, PDF, etc.)</small>
+      </div>
+      
+      <div class="file-preview" *ngIf="selectedFiles.length > 0">
+        <h5>Fichiers sélectionnés:</h5>
+        <ul>
+          <li *ngFor="let file of selectedFiles">{{ file.name }} ({{ file.size | number }} octets)</li>
+        </ul>
+      </div>
+      
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          [disabled]="selectedFiles.length === 0 || isLoading">
+          <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          {{ isLoading ? 'Envoi en cours...' : 'Envoyer les documents' }}
+        </button>
+      </div>
+    </form>
+    
+    <!-- Messages -->
+    <div class="messages">
+      <div class="alert alert-success" *ngIf="successMessage">
+        {{ successMessage }}
+      </div>
+      <div class="alert alert-danger" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+    </div>
+  </div>
+
+  <!-- User Documents Section -->
+  <div class="user-documents-section" *ngIf="userDocuments.length > 0">
+    <h3>Vos Documents</h3>
+    <div class="documents-list">
+      <div class="document-item" *ngFor="let doc of userDocuments">
+        <div class="document-info">
+          <h5>{{ doc.fileName }}</h5>
+          <p>Type: {{ doc.fileType }}</p>
+          <p>Taille: {{ doc.fileSize | number }} octets</p>
+          <p>Statut: 
+            <span class="status-badge" [class.approved]="doc.approved" [class.pending]="!doc.approved">
+              {{ doc.approved ? 'Approuvé' : 'En attente' }}
+            </span>
+          </p>
+          <p>Envoyé le: {{ doc.uploadedAt | date:'short' }}</p>
+        </div>
+        <div class="document-actions">
+          <a [href]="doc.filePath" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

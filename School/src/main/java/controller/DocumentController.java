@@ -104,6 +104,23 @@ public class DocumentController {
     public ResponseEntity<String> testUpload() {
         return ResponseEntity.ok("Test endpoint working");
     }
+    
+    @PostMapping("/upload-for-lesson-or-analysis")
+    public ResponseEntity<?> uploadDocumentForLessonOrAnalysis(
+            @RequestParam Long userId,
+            @RequestParam(required = false) String context,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            Document document = documentService.uploadDocumentForLessonOrAnalysis(userId, context, file);
+            return ResponseEntity.ok(document);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload document: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error: " + e.getMessage());
+        }
+    }
 
     @GetMapping("/pending")
     public List<Document> getPendingDocuments() {

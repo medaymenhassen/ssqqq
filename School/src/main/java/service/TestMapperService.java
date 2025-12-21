@@ -84,6 +84,8 @@ public class TestMapperService {
         dto.setUpdatedAt(testQuestion.getUpdatedAt());
         if (testQuestion.getCourseTest() != null) {
             dto.setCourseTestId(testQuestion.getCourseTest().getId());
+        } else {
+            dto.setCourseTestId(null);
         }
         if (testQuestion.getAnswers() != null) {
             dto.setAnswers(testQuestion.getAnswers().stream()
@@ -93,6 +95,14 @@ public class TestMapperService {
         
         if (testQuestion.getCourseLesson() != null) {
             dto.setCourseLessonId(testQuestion.getCourseLesson().getId());
+        } else {
+            dto.setCourseLessonId(null);
+        }
+        
+        if (testQuestion.getUser() != null) {
+            dto.setUserId(testQuestion.getUser().getId());
+        } else {
+            dto.setUserId(null);
         }
 
         return dto;
@@ -127,6 +137,7 @@ public class TestMapperService {
             courseLesson.setId(dto.getCourseLessonId());
             entity.setCourseLesson(courseLesson);
         }
+        // Note: User will be set in the service layer when creating the entity
 
         return entity;
     }
@@ -147,6 +158,14 @@ public class TestMapperService {
         dto.setUpdatedAt(testAnswer.getUpdatedAt());
         if (testAnswer.getQuestion() != null) {
             dto.setQuestionId(testAnswer.getQuestion().getId());
+        } else {
+            dto.setQuestionId(null);
+        }
+        
+        if (testAnswer.getUser() != null) {
+            dto.setUserId(testAnswer.getUser().getId());
+        } else {
+            dto.setUserId(null);
         }
 
         return dto;
@@ -163,6 +182,7 @@ public class TestMapperService {
         entity.setIsLogical(dto.getIsLogical());
         entity.setIsCorrect(dto.getIsCorrect());
         entity.setAnswerOrder(dto.getAnswerOrder());
+        // Note: User will be set in the service layer when creating the entity
 
         return entity;
     }
@@ -183,6 +203,10 @@ public class TestMapperService {
         dto.setContentDescription(courseLesson.getContentDescription());
         dto.setDisplayOrder(courseLesson.getDisplayOrder());
         dto.setLessonOrder(courseLesson.getLessonOrder());
+        dto.setIsService(courseLesson.getIsService());
+        if (courseLesson.getUser() != null) {
+            dto.setUserId(courseLesson.getUser().getId());
+        }
         dto.setCreatedAt(courseLesson.getCreatedAt());
         dto.setUpdatedAt(courseLesson.getUpdatedAt());
 
@@ -204,6 +228,8 @@ public class TestMapperService {
         entity.setContentDescription(dto.getContentDescription());
         entity.setDisplayOrder(dto.getDisplayOrder());
         entity.setLessonOrder(dto.getLessonOrder());
+        entity.setIsService(dto.getIsService());
+        // Note: User will be set in the service layer when creating the entity
 
         return entity;
     }

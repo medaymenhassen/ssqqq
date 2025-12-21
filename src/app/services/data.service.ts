@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpRequest } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { DataRecord } from '../models/data.model';
 import { AuthService } from '../auth.service';
@@ -61,6 +61,40 @@ export class DataService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
     return this.http.delete<void>(`${this.apiUrl}/${id}`, { headers });
+  }
+
+  // Save a data record with video blob
+  saveDataRecordWithVideo(record: DataRecord, videoBlob?: Blob): Observable<DataRecord> {
+    const token = this.authService.getAccessToken();
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    
+    // If we have a video blob, send it as multipart/form-data
+    if (videoBlob) {
+      const formData = new FormData();
+      formData.append('dataRecord', JSON.stringify({
+        userId: record.userId,
+        imageData: record.imageData,
+        videoUrl: record.videoUrl,
+        jsonData: record.jsonData,
+        timestamp: record.timestamp,
+        movementDetected: record.movementDetected
+      }));
+      formData.append('video', videoBlob, 'video.webm');
+      
+      const req = new HttpRequest('POST', this.apiUrl + '/with-video', formData, {
+        headers: headers,
+        reportProgress: true
+      });
+      
+      return this.http.request(req);
+    } else {
+      // Otherwise, send as regular JSON
+      headers = headers.set('Content-Type', 'application/json');
+      return this.http.post<DataRecord>(this.apiUrl, record, { headers });
+    }
   }
 
   // For demo purposes, we'll store data locally if backend is not available

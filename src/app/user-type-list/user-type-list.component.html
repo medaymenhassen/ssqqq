@@ -35,7 +35,11 @@
           <td>{{ userType.nameEn }}</td>
           <td>{{ userType.descFr }}</td>
           <td>{{ userType.descEn }}</td>
-          <td>{{ userType.bigger }}</td>
+          <td>
+            <span *ngIf="userType.bigger === 'freelance'">Freelance</span>
+            <span *ngIf="userType.bigger === 'individual'">Individual</span>
+            <span *ngIf="userType.bigger === 'company'">Company</span>
+          </td>
           <td>
             <button class="btn btn-sm btn-outline-primary" (click)="editUserType(userType.id)">Modifier</button>
             <button class="btn btn-sm btn-outline-danger" (click)="deleteUserType(userType.id)">Supprimer</button>

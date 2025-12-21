@@ -1,5 +1,7 @@
 package com.auth.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ public class CourseTest {
     @JoinColumn(name = "course_id")
     private Course course;
     
+    @JsonBackReference
     @OneToMany(mappedBy = "courseTest", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestQuestion> questions = new ArrayList<>();
     

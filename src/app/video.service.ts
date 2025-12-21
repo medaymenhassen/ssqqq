@@ -244,7 +244,7 @@ export class VideoService {
         if (faceResults.faceLandmarks && faceResults.faceLandmarks.length > 0) {
           console.log('🔍 Face landmarks count:', faceResults.faceLandmarks.length);
           console.log('🔍 First face landmark:', faceResults.faceLandmarks[0]);
-          results.faceLandmarks = faceResults.faceLandmarks[0];
+          results.faceLandmarks = faceResults.faceLandmarks;
         }
       }
       
@@ -496,57 +496,68 @@ export class VideoService {
   }
 
   private isFist(landmarks: any): boolean {
+    if (!landmarks || landmarks.length < 21) return false;
     const tips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
     const base = landmarks[9];
-    return tips.every(tip => Math.abs(tip.y - base.y) < 0.05);
+    return tips.every(tip => tip && base && Math.abs(tip.y - base.y) < 0.1);
   }
 
   private isVictory(landmarks: any): boolean {
+    if (!landmarks || landmarks.length < 21) return false;
     const indexTip = landmarks[8];
     const middleTip = landmarks[12];
     const ringTip = landmarks[16];
     const pinkyTip = landmarks[20];
     const base = landmarks[9];
 
-    return (indexTip.y < base.y && middleTip.y < base.y &&
-      ringTip.y > base.y && pinkyTip.y > base.y);
+    return (indexTip && middleTip && ringTip && pinkyTip && base &&
+      indexTip.y < base.y - 0.05 && middleTip.y < base.y - 0.05 &&
+      ringTip.y > base.y - 0.05 && pinkyTip.y > base.y - 0.05);
   }
 
   private isOK(landmarks: any): boolean {
+    if (!landmarks || landmarks.length < 21) return false;
     const thumbTip = landmarks[4];
     const indexTip = landmarks[8];
+    if (!thumbTip || !indexTip) return false;
     const distance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
-    return distance < 0.05;
+    return distance < 0.1;
   }
 
   private isThumbsUp(landmarks: any): boolean {
+    if (!landmarks || landmarks.length < 21) return false;
     const thumbTip = landmarks[4];
     const palmBase = landmarks[0];
-    return thumbTip.y < palmBase.y - 0.1;
+    return thumbTip && palmBase && thumbTip.y < palmBase.y - 0.05;
   }
 
   private isOpenHand(landmarks: any): boolean {
+    if (!landmarks || landmarks.length < 21) return false;
     const tips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
     const base = landmarks[9];
-    return tips.filter(tip => tip.y < base.y).length >= 4;
+    if (!base) return false;
+    return tips.filter(tip => tip && tip.y < base.y - 0.05).length >= 4;
   }
 
   private calculateMouthOpenness(faceLandmarks: any): number {
-    if (faceLandmarks.length < 70) return 0;
+    if (!faceLandmarks || faceLandmarks.length < 70) return 0;
     const topLip = faceLandmarks[61];
     const bottomLip = faceLandmarks[67];
+    if (!topLip || !bottomLip) return 0;
     const distance = Math.hypot(topLip.x - bottomLip.x, topLip.y - bottomLip.y);
-    return Math.min(100, Math.round(distance * 1000));
+    // Make it more sensitive by increasing the multiplier
+    return Math.min(100, Math.round(distance * 2000));
   }
 
   private detectEyeBlink(faceLandmarks: any, side: 'left' | 'right'): number {
-    if (faceLandmarks.length < 70) return 0;
+    if (!faceLandmarks || faceLandmarks.length < 70) return 0;
     const startIdx = side === 'left' ? 159 : 386;
     const eyeLandmarks = faceLandmarks.slice(startIdx, startIdx + 10);
 
     if (eyeLandmarks.length === 0) return 0;
 
     let totalDistance = 0;
+    let validPairs = 0;
     for (let i = 0; i < eyeLandmarks.length; i += 2) {
       if (eyeLandmarks[i] && eyeLandmarks[i + 1]) {
         const dist = Math.hypot(
@@ -554,19 +565,23 @@ export class VideoService {
           eyeLandmarks[i].y - eyeLandmarks[i + 1].y
         );
         totalDistance += dist;
+        validPairs++;
       }
     }
 
-    const avgDistance = totalDistance / (eyeLandmarks.length / 2);
-    return Math.round(Math.max(0, 100 - avgDistance * 500));
+    if (validPairs === 0) return 0;
+    
+    const avgDistance = totalDistance / validPairs;
+    // Make it more sensitive by adjusting the multiplier
+    return Math.round(Math.max(0, 100 - avgDistance * 1000));
   }
 
   private detectEyeGaze(faceLandmarks: any, side: 'left' | 'right'): number {
-    if (faceLandmarks.length < 70) return 0;
+    if (!faceLandmarks || faceLandmarks.length < 70) return 0;
     const pupilIdx = side === 'left' ? 473 : 468;
 
     if (faceLandmarks[pupilIdx]) {
-      return faceLandmarks[pupilIdx].x * 100;
+      return faceLandmarks[pupilIdx].x * 200; // Increase sensitivity
     }
     return 0;
   }
@@ -586,15 +601,16 @@ export class VideoService {
           (rightShoulder.position?.x || 0) - (leftShoulder.position?.x || 0)
         );
 
-        if (Math.abs(shoulderAngle) > 0.3) posture = 'Penchée';
-        else if (Math.abs(shoulderAngle) < 0.1) posture = 'Droite';
+        if (Math.abs(shoulderAngle) > 0.2) posture = 'Penchée'; // Lower threshold
+        else if (Math.abs(shoulderAngle) < 0.05) posture = 'Droite'; // Lower threshold
       }
     }
 
     if (faceData) {
-      if (faceData.mouth_open && faceData.mouth_open > 30) {
+      if (faceData.mouth_open && faceData.mouth_open > 20) { // Lower threshold
         faceExpression = 'Bouche ouverte';
-      } else if (faceData.eye_blink_left && faceData.eye_blink_left > 50) {
+      } else if ((faceData.eye_blink_left && faceData.eye_blink_left > 30) || 
+                 (faceData.eye_blink_right && faceData.eye_blink_right > 30)) { // Lower threshold and check both eyes
         faceExpression = 'Clignotement';
       } else {
         faceExpression = 'Naturelle';

@@ -85,3 +85,25 @@
   border-radius: 4px;
   margin-top: 20px;
 }
+
+.file-upload {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.file-upload label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: normal;
+  color: #666;
+}
+
+.file-upload input[type="file"] {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}

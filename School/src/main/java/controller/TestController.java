@@ -54,12 +54,18 @@ public class TestController {
         return testService.getAllTestQuestionsWithDTO();
     }
 
+    @GetMapping("/questions/lesson/{lessonId}")
+    public List<TestQuestionDTO> getTestQuestionsByLessonId(@PathVariable Long lessonId) {
+        return testService.getTestQuestionsByLessonIdWithDTO(lessonId);
+    }
+
     @GetMapping("/questions/{id}")
     public TestQuestionDTO getTestQuestionById(@PathVariable Long id) {
         return testService.getTestQuestionDTOById(id);
     }
 
     @PostMapping("/questions")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public TestQuestionDTO createTestQuestion(@RequestBody TestQuestionDTO testQuestionDTO) {
         return testService.createTestQuestionFromDTO(testQuestionDTO);
     }

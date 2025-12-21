@@ -34,7 +34,6 @@ com\auth\repository\CourseRepository.class
 com\auth\model\TestQuestion$ExpectedAnswerType.class
 com\auth\model\UserCourseCompletion.class
 com\auth\repository\UserLessonCompletionRepository.class
-com\auth\dto\DocumentResponse.class
 com\auth\model\ChatConversation$ConversationConverter.class
 com\auth\util\GeneratePasswordHash.class
 com\auth\dto\UserTypeResponse.class

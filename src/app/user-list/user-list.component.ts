@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService, User } from '../auth.service';
+import { Router } from '@angular/router';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
 
 @Component({
@@ -13,18 +14,30 @@ export class UserListComponent implements OnInit {
   loading: boolean = false;
   error: string = '';
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private router: Router) {}
 
   ngOnInit(): void {
     this.loadUsers();
   }
 
+  viewUserProfile(userId: number): void {
+    this.router.navigate(['/profile', userId]);
+  }
+
   loadUsers(): void {
-    // In a real application, you would have an endpoint to get all users
-    // For now, we'll just show the current user as an example
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser) {
-      this.users = [currentUser];
-    }
+    // Get all users
+    this.authService.getAllUsers().subscribe({
+      next: (users) => {
+        this.users = users;
+      },
+      error: (error) => {
+        console.error('Error loading users:', error);
+        // Fallback to current user if we can't load all users
+        const currentUser = this.authService.getCurrentUser();
+        if (currentUser) {
+          this.users = [currentUser];
+        }
+      }
+    });
   }
 }

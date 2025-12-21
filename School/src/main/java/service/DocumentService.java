@@ -23,6 +23,11 @@ import java.util.Optional;
 import java.util.UUID;
 import jakarta.annotation.PostConstruct;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.auth.model.User;
+import com.auth.repository.UserRepository;
+
 @Service
 public class DocumentService {
 
@@ -95,7 +100,7 @@ public class DocumentService {
         // Create document record
         Document document = new Document();
         document.setFileName(originalFilename);
-        document.setFileType(getFileType(file.getContentType()));
+        document.setFileType(getFileType(file.getContentType(), file));
         document.setFilePath(filePath.toString());
         document.setFileSize(file.getSize());
         document.setUser(user);
@@ -129,13 +134,70 @@ public class DocumentService {
         Path filePath = uploadPath.resolve(uniqueFilename);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
+        // Get current authenticated user
+        System.out.println("Getting current authenticated user for document upload");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("Authentication object: " + authentication);
+        User currentUser = null;
+        if (authentication != null) {
+            System.out.println("Principal class: " + authentication.getPrincipal().getClass().getName());
+            System.out.println("Principal toString: " + authentication.getPrincipal().toString());
+            
+            if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.User) {
+                String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
+                System.out.println("Current username (User): " + username);
+                Optional<User> userOpt = userRepository.findByEmail(username);
+                System.out.println("User lookup result: " + userOpt.isPresent());
+                if (userOpt.isPresent()) {
+                    currentUser = userOpt.get();
+                    System.out.println("Found user: " + currentUser.getEmail());
+                } else {
+                    System.out.println("User not found for email: " + username);
+                }
+            } else if (authentication.getPrincipal() instanceof String) {
+                // Sometimes the principal is just the username/email as a string
+                String username = (String) authentication.getPrincipal();
+                System.out.println("Current username (String): " + username);
+                Optional<User> userOpt = userRepository.findByEmail(username);
+                System.out.println("User lookup result: " + userOpt.isPresent());
+                if (userOpt.isPresent()) {
+                    currentUser = userOpt.get();
+                    System.out.println("Found user: " + currentUser.getEmail());
+                } else {
+                    System.out.println("User not found for email: " + username);
+                }
+            } else {
+                System.out.println("Unknown principal type: " + authentication.getPrincipal().getClass().getName());
+            }
+        } else {
+            System.out.println("No authentication found");
+        }
+        
         // Create document record
         Document document = new Document();
         document.setFileName(originalFilename);
-        document.setFileType(getFileType(file.getContentType()));
+        document.setFileType(getFileType(file.getContentType(), file));
         document.setFilePath(filePath.toString());
         document.setFileSize(file.getSize());
         document.setTestAnswer(testAnswer);
+        // Set the current user if available
+        if (currentUser != null) {
+            System.out.println("Setting current user for document: " + currentUser.getEmail());
+            document.setUser(currentUser);
+        } else {
+            // Fallback: try to get any user
+            System.out.println("No current user found, trying to find any user");
+            List<User> allUsers = userRepository.findAll();
+            if (!allUsers.isEmpty()) {
+                User fallbackUser = allUsers.get(0); // Use the first user
+                System.out.println("Using first available user as fallback: " + fallbackUser.getEmail());
+                document.setUser(fallbackUser);
+            } else {
+                // This should never happen in a real application
+                System.out.println("No users found in database!");
+                throw new RuntimeException("No users available to associate with document");
+            }
+        }
         document.setUploadedAt(LocalDateTime.now());
         document.setApproved(false); // Default to not approved
 
@@ -170,7 +232,48 @@ public class DocumentService {
         return documentRepository.findByApproved(false);
     }
 
-    private String getFileType(String contentType) {
+    public Document uploadDocumentForLessonOrAnalysis(Long userId, String context, MultipartFile file) throws IOException {
+        // Get user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Generate unique filename
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+
+        // Save file to disk
+        Path filePath = uploadPath.resolve(uniqueFilename);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        // Create document record
+        Document document = new Document();
+        document.setFileName(originalFilename);
+        document.setFileType(getFileType(file.getContentType(), file));
+        document.setFilePath(filePath.toString());
+        document.setFileSize(file.getSize());
+        document.setUser(user);
+        document.setUploadedAt(LocalDateTime.now());
+        document.setApproved(false); // Default to not approved
+        
+        // Add context information to the filename or as metadata
+        if (context != null && !context.isEmpty()) {
+            document.setFileName(context + "_" + originalFilename);
+        }
+
+        return documentRepository.save(document);
+    }
+
+    private String getFileType(String contentType, MultipartFile file) {
         if (contentType == null) {
             return "UNKNOWN";
         }
@@ -180,7 +283,19 @@ public class DocumentService {
         } else if (contentType.equals("application/pdf")) {
             return "PDF";
         } else if (contentType.startsWith("video/")) {
+            // Specifically handle MP4 videos
+            if (contentType.equals("video/mp4")) {
+                return "MP4_VIDEO";
+            }
             return "VIDEO";
+        } else if (contentType.equals("model/gltf-binary") || 
+                   contentType.equals("model/gltf+json") || 
+                   (contentType.equals("application/octet-stream") && 
+                    file != null && 
+                    file.getOriginalFilename() != null && 
+                    file.getOriginalFilename().toLowerCase().endsWith(".glb"))) {
+            // Handle GLB 3D models
+            return "GLB_3D_MODEL";
         } else {
             return "OTHER";
         }

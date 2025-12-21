@@ -30,6 +30,7 @@ import { Subject, takeUntil } from 'rxjs';
 })
 export class VideoComponent implements OnInit, OnDestroy {
   @ViewChild('videoElement') videoElement!: ElementRef<HTMLVideoElement>;
+  @ViewChild('csvDropdown') csvDropdown!: ElementRef;
 
   bodyAnalysis: BodyAnalysis | null = null;
   isVideoInitialized = false;
@@ -60,6 +61,15 @@ export class VideoComponent implements OnInit, OnDestroy {
   // Captured data storage
   private capturedVideos: { blob: Blob, metadata: any }[] = [];
   private capturedMovements: any[] = [];
+  private analysisStartTime: number | null = null;
+  private analysisEndTime: number | null = null;
+  public temporaryVideoBlob: Blob | null = null;
+  public isCsvDropdownOpen = false;
+  
+  // CSV movement data collection
+  private poseDataHistory: { timestamp: number; data: any }[] = [];
+  private faceDataHistory: { timestamp: number; data: any }[] = [];
+  private handsDataHistory: { timestamp: number; data: any }[] = [];
 
   constructor(
     @Inject(VideoService) private videoService: VideoService,
@@ -70,6 +80,8 @@ export class VideoComponent implements OnInit, OnDestroy {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    // Listen for clicks outside the dropdown to close it
+    document.addEventListener('click', this.onDocumentClick.bind(this));
     console.log('🎬 VideoComponent initialized');
     
     // Get current user ID
@@ -116,6 +128,10 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   async startCamera(): Promise<void> {
     console.log('🎬 Starting camera...');
+    
+    // Reset analysis times when starting camera
+    this.analysisStartTime = Date.now();
+    this.analysisEndTime = null;
     
     // Check if we're in a browser environment
     if (typeof window === 'undefined' || !navigator.mediaDevices) {
@@ -164,11 +180,21 @@ export class VideoComponent implements OnInit, OnDestroy {
   }
 
   stopCamera(): void {
+    // Close dropdown when stopping camera
+    this.isCsvDropdownOpen = false;
     this.isTracking = false;
+    
+    // Set analysis end time when stopping camera
+    this.analysisEndTime = Date.now();
+    
+    // Create temporary video from analysis period
+    this.createTemporaryVideo();
+
+    // Upload all CSV data to backend
+    this.uploadAllCSV();
 
     // Send captured data to backends before stopping
     this.sendCapturedDataToBackends();
-
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null;
@@ -311,9 +337,24 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   @HostListener('window:beforeunload')
   ngOnDestroy(): void {
+    // Remove event listener
+    document.removeEventListener('click', this.onDocumentClick.bind(this));
+    
     this.stopCamera();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+  
+  private onDocumentClick(event: Event): void {
+    // Close dropdown if clicked outside
+    if (this.isCsvDropdownOpen && event.target !== this.csvDropdown?.nativeElement) {
+      this.isCsvDropdownOpen = false;
+    }
+  }
+  
+  toggleCsvDropdown(): void {
+    this.isCsvDropdownOpen = !this.isCsvDropdownOpen;
+  }
   }
 
   private loadDataRecords(): void {
@@ -455,6 +496,19 @@ export class VideoComponent implements OnInit, OnDestroy {
             });
           }
         });
+        
+        // Also save movement data as a document
+        const jsonDataString = JSON.stringify(jsonData, null, 2);
+        const jsonDataBlob = new Blob([jsonDataString], { type: 'application/json' });
+        const jsonDataFile = new File([jsonDataBlob], `movement_data_${Date.now()}.json`, { type: 'application/json' });
+        this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'movement_data', jsonDataFile).subscribe({
+          next: (document) => {
+            console.log('📊 Movement data uploaded as document:', document);
+          },
+          error: (err) => {
+            console.error('❌ Error uploading movement data as document:', err);
+          }
+        });
       }
     } catch (error) {
       console.error('❌ Error capturing image:', error);
@@ -471,6 +525,9 @@ export class VideoComponent implements OnInit, OnDestroy {
     console.log('🔍 Current time:', currentTime);
     console.log('🔍 Time since last capture:', currentTime - this.lastCaptureTime);
     console.log('🔍 Capture interval:', this.captureInterval);
+    
+    // Collect movement data for CSV
+    this.collectMovementData(currentTime);
     
     // Check if enough time has passed since last capture
     if (currentTime - this.lastCaptureTime < this.captureInterval) {
@@ -565,8 +622,8 @@ export class VideoComponent implements OnInit, OnDestroy {
       }
     };
     
-    // Save the video record
-    this.dataService.saveDataRecord(videoRecord).subscribe({
+    // Save the video record with blob if available
+    this.dataService.saveDataRecordWithVideo(videoRecord).subscribe({
       next: (record) => {
         console.log('📹 Video segment saved:', record.id);
       },
@@ -581,6 +638,18 @@ export class VideoComponent implements OnInit, OnDestroy {
             console.error('❌ Error saving video data locally:', localErr);
           }
         });
+      }
+    });
+    
+    // Also upload a placeholder document for body analysis
+    const placeholderBlob = new Blob([''], { type: 'text/plain' });
+    const placeholderFile = new File([placeholderBlob], `body_analysis_placeholder_${Date.now()}.txt`, { type: 'text/plain' });
+    this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'body_analysis', placeholderFile).subscribe({
+      next: (document) => {
+        console.log('📹 Body analysis placeholder uploaded as document:', document);
+      },
+      error: (err) => {
+        console.error('❌ Error uploading body analysis placeholder as document:', err);
       }
     });
   }
@@ -615,8 +684,8 @@ export class VideoComponent implements OnInit, OnDestroy {
       jsonData: videoMetadata
     };
     
-    // Save the video record
-    this.dataService.saveDataRecord(videoRecord).subscribe({
+    // Save the video record with blob if available
+    this.dataService.saveDataRecordWithVideo(videoRecord, blob).subscribe({
       next: (record) => {
         console.log('📹 Video segment saved:', record.id);
       },
@@ -633,6 +702,17 @@ export class VideoComponent implements OnInit, OnDestroy {
         });
       }
     });
+    
+    // Also upload the video as a document for body analysis
+    const videoFile = new File([blob], `body_analysis_${Date.now()}.webm`, { type: 'video/webm' });
+    this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'body_analysis', videoFile).subscribe({
+      next: (document) => {
+        console.log('📹 Body analysis video uploaded as document:', document);
+      },
+      error: (err) => {
+        console.error('❌ Error uploading body analysis video as document:', err);
+      }
+    });
   }
 
   // Method to manually trigger data capture for testing
@@ -640,8 +720,509 @@ export class VideoComponent implements OnInit, OnDestroy {
     console.log('🧪 Manual capture triggered');
     this.captureImage();
   }
+  
+  /**
+   * Collect movement data for CSV export
+   */
+  private collectMovementData(timestamp: number): void {
+    // Collect pose data
+    if (this.bodyAnalysis?.pose) {
+      this.poseDataHistory.push({
+        timestamp,
+        data: {
+          confidence: this.bodyAnalysis.poseConfidence || 0,
+          head: this.bodyAnalysis.pose['Head'] ? {
+            x: this.bodyAnalysis.pose['Head'].position?.x || 0,
+            y: this.bodyAnalysis.pose['Head'].position?.y || 0,
+            z: this.bodyAnalysis.pose['Head'].position?.z || 0,
+            confidence: this.bodyAnalysis.pose['Head'].confidence || 0
+          } : null,
+          leftShoulder: this.bodyAnalysis.pose['LeftShoulder'] ? {
+            x: this.bodyAnalysis.pose['LeftShoulder'].position?.x || 0,
+            y: this.bodyAnalysis.pose['LeftShoulder'].position?.y || 0,
+            z: this.bodyAnalysis.pose['LeftShoulder'].position?.z || 0,
+            confidence: this.bodyAnalysis.pose['LeftShoulder'].confidence || 0
+          } : null,
+          rightShoulder: this.bodyAnalysis.pose['RightShoulder'] ? {
+            x: this.bodyAnalysis.pose['RightShoulder'].position?.x || 0,
+            y: this.bodyAnalysis.pose['RightShoulder'].position?.y || 0,
+            z: this.bodyAnalysis.pose['RightShoulder'].position?.z || 0,
+            confidence: this.bodyAnalysis.pose['RightShoulder'].confidence || 0
+          } : null,
+          leftHip: this.bodyAnalysis.pose['LeftHip'] ? {
+            x: this.bodyAnalysis.pose['LeftHip'].position?.x || 0,
+            y: this.bodyAnalysis.pose['LeftHip'].position?.y || 0,
+            z: this.bodyAnalysis.pose['LeftHip'].position?.z || 0,
+            confidence: this.bodyAnalysis.pose['LeftHip'].confidence || 0
+          } : null,
+          rightHip: this.bodyAnalysis.pose['RightHip'] ? {
+            x: this.bodyAnalysis.pose['RightHip'].position?.x || 0,
+            y: this.bodyAnalysis.pose['RightHip'].position?.y || 0,
+            z: this.bodyAnalysis.pose['RightHip'].position?.z || 0,
+            confidence: this.bodyAnalysis.pose['RightHip'].confidence || 0
+          } : null
+        }
+      });
+    }
+    
+    // Collect face data
+    if (this.bodyAnalysis?.face) {
+      this.faceDataHistory.push({
+        timestamp,
+        data: {
+          confidence: this.bodyAnalysis.faceConfidence || 0,
+          mouthOpen: this.bodyAnalysis.face.mouth_open || 0,
+          eyeBlinkLeft: this.bodyAnalysis.face.eye_blink_left || 0,
+          eyeBlinkRight: this.bodyAnalysis.face.eye_blink_right || 0,
+          eyeLookLeft: this.bodyAnalysis.face.eye_look_left || 0,
+          eyeLookRight: this.bodyAnalysis.face.eye_look_right || 0,
+          headPosition: this.bodyAnalysis.face.Head ? {
+            x: this.bodyAnalysis.face.Head.position?.x || 0,
+            y: this.bodyAnalysis.face.Head.position?.y || 0,
+            z: this.bodyAnalysis.face.Head.position?.z || 0
+          } : null
+        }
+      });
+    }
+    
+    // Collect hands data
+    if (this.bodyAnalysis?.hands) {
+      this.handsDataHistory.push({
+        timestamp,
+        data: {
+          left: this.bodyAnalysis.hands.left ? {
+            gesture: this.bodyAnalysis.hands.left.gesture || 'unknown',
+            handedness: this.bodyAnalysis.hands.left.handedness || 'unknown',
+            landmarks: this.bodyAnalysis.hands.left.landmarks ? this.bodyAnalysis.hands.left.landmarks.map((landmark: any) => ({
+              x: landmark.x || 0,
+              y: landmark.y || 0,
+              z: landmark.z || 0
+            })) : []
+          } : null,
+          right: this.bodyAnalysis.hands.right ? {
+            gesture: this.bodyAnalysis.hands.right.gesture || 'unknown',
+            handedness: this.bodyAnalysis.hands.right.handedness || 'unknown',
+            landmarks: this.bodyAnalysis.hands.right.landmarks ? this.bodyAnalysis.hands.right.landmarks.map((landmark: any) => ({
+              x: landmark.x || 0,
+              y: landmark.y || 0,
+              z: landmark.z || 0
+            })) : []
+          } : null
+        }
+      });
+    }
+  }
+  
+  /**
+   * Download the temporary analysis video
+   */
+  downloadTemporaryVideo(): void {
+    console.log('📥 Downloading temporary video');
+    
+    if (!this.temporaryVideoBlob) {
+      console.log('⏭️ No temporary video available');
+      return;
+    }
+    
+    // Create download link
+    const url = URL.createObjectURL(this.temporaryVideoBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analysis-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('📥 Temporary video downloaded');
+  }
+  
+  /**
+   * Generate and download CSV file for pose data
+   */
+  downloadPoseCSV(): void {
+    console.log('📥 Downloading pose CSV data');
+    
+    if (this.poseDataHistory.length === 0) {
+      console.log('⏭️ No pose data available');
+      return;
+    }
+    
+    // Generate CSV content
+    let csvContent = 'Timestamp,Pose Confidence,Head X,Head Y,Head Z,Head Confidence,Left Shoulder X,Left Shoulder Y,Left Shoulder Z,Left Shoulder Confidence,Right Shoulder X,Right Shoulder Y,Right Shoulder Z,Right Shoulder Confidence,Left Hip X,Left Hip Y,Left Hip Z,Left Hip Confidence,Right Hip X,Right Hip Y,Right Hip Z,Right Hip Confidence\n';
+    
+    this.poseDataHistory.forEach(entry => {
+      const data = entry.data;
+      const row = [
+        entry.timestamp,
+        data.confidence || 0,
+        data.head?.x || 0,
+        data.head?.y || 0,
+        data.head?.z || 0,
+        data.head?.confidence || 0,
+        data.leftShoulder?.x || 0,
+        data.leftShoulder?.y || 0,
+        data.leftShoulder?.z || 0,
+        data.leftShoulder?.confidence || 0,
+        data.rightShoulder?.x || 0,
+        data.rightShoulder?.y || 0,
+        data.rightShoulder?.z || 0,
+        data.rightShoulder?.confidence || 0,
+        data.leftHip?.x || 0,
+        data.leftHip?.y || 0,
+        data.leftHip?.z || 0,
+        data.leftHip?.confidence || 0,
+        data.rightHip?.x || 0,
+        data.rightHip?.y || 0,
+        data.rightHip?.z || 0,
+        data.rightHip?.confidence || 0
+      ].join(',');
+      csvContent += row + '\n';
+    });
+    
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pose-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('📥 Pose CSV data downloaded');
+  }
 
   /**
+   * Generate and upload CSV file for pose data to backend
+   */
+  uploadPoseCSV(): void {
+    console.log('📤 Uploading pose CSV data to backend');
+    
+    if (this.poseDataHistory.length === 0) {
+      console.log('⏭️ No pose data available');
+      return;
+    }
+    
+    // Generate CSV content
+    let csvContent = 'Timestamp,Pose Confidence,Head X,Head Y,Head Z,Head Confidence,Left Shoulder X,Left Shoulder Y,Left Shoulder Z,Left Shoulder Confidence,Right Shoulder X,Right Shoulder Y,Right Shoulder Z,Right Shoulder Confidence,Left Hip X,Left Hip Y,Left Hip Z,Left Hip Confidence,Right Hip X,Right Hip Y,Right Hip Z,Right Hip Confidence\n';
+    
+    this.poseDataHistory.forEach(entry => {
+      const data = entry.data;
+      const row = [
+        entry.timestamp,
+        data.confidence || 0,
+        data.head?.x || 0,
+        data.head?.y || 0,
+        data.head?.z || 0,
+        data.head?.confidence || 0,
+        data.leftShoulder?.x || 0,
+        data.leftShoulder?.y || 0,
+        data.leftShoulder?.z || 0,
+        data.leftShoulder?.confidence || 0,
+        data.rightShoulder?.x || 0,
+        data.rightShoulder?.y || 0,
+        data.rightShoulder?.z || 0,
+        data.rightShoulder?.confidence || 0,
+        data.leftHip?.x || 0,
+        data.leftHip?.y || 0,
+        data.leftHip?.z || 0,
+        data.leftHip?.confidence || 0,
+        data.rightHip?.x || 0,
+        data.rightHip?.y || 0,
+        data.rightHip?.z || 0,
+        data.rightHip?.confidence || 0
+      ].join(',');
+      csvContent += row + '\n';
+    });
+    
+    // Create CSV file and upload to backend
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvFile = new File([blob], `pose-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`, { type: 'text/csv;charset=utf-8;' });
+    
+    if (this.userId) {
+      this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'pose_data', csvFile).subscribe({
+        next: (document) => {
+          console.log('📊 Pose CSV data uploaded as document:', document);
+        },
+        error: (err) => {
+          console.error('❌ Error uploading pose CSV data as document:', err);
+        }
+      });
+    }
+    
+    console.log('📤 Pose CSV data upload initiated');
+  }  
+  /**
+   * Generate and download CSV file for face data
+   */
+  downloadFaceCSV(): void {
+    console.log('📥 Downloading face CSV data');
+      
+    if (this.faceDataHistory.length === 0) {
+      console.log('⏭️ No face data available');
+      return;
+    }
+      
+    // Generate CSV content
+    let csvContent = 'Timestamp,Face Confidence,Mouth Open,Eye Blink Left,Eye Blink Right,Eye Look Left,Eye Look Right,Head Position X,Head Position Y,Head Position Z\n';
+      
+    this.faceDataHistory.forEach(entry => {
+      const data = entry.data;
+      const row = [
+        entry.timestamp,
+        data.confidence || 0,
+        data.mouthOpen ? 1 : 0,
+        data.eyeBlinkLeft ? 1 : 0,
+        data.eyeBlinkRight ? 1 : 0,
+        data.eyeLookLeft ? 1 : 0,
+        data.eyeLookRight ? 1 : 0,
+        data.headPosition?.x || 0,
+        data.headPosition?.y || 0,
+        data.headPosition?.z || 0
+      ].join(',');
+      csvContent += row + '\n';
+    });
+      
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `face-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+      
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+      
+    console.log('📥 Face CSV data downloaded');
+  }
+  
+  /**
+   * Generate and upload CSV file for face data to backend
+   */
+  uploadFaceCSV(): void {
+    console.log('📤 Uploading face CSV data to backend');
+      
+    if (this.faceDataHistory.length === 0) {
+      console.log('⏭️ No face data available');
+      return;
+    }
+      
+    // Generate CSV content
+    let csvContent = 'Timestamp,Face Confidence,Mouth Open,Eye Blink Left,Eye Blink Right,Eye Look Left,Eye Look Right,Head Position X,Head Position Y,Head Position Z\n';
+      
+    this.faceDataHistory.forEach(entry => {
+      const data = entry.data;
+      const row = [
+        entry.timestamp,
+        data.confidence || 0,
+        data.mouthOpen ? 1 : 0,
+        data.eyeBlinkLeft ? 1 : 0,
+        data.eyeBlinkRight ? 1 : 0,
+        data.eyeLookLeft ? 1 : 0,
+        data.eyeLookRight ? 1 : 0,
+        data.headPosition?.x || 0,
+        data.headPosition?.y || 0,
+        data.headPosition?.z || 0
+      ].join(',');
+      csvContent += row + '\n';
+    });
+      
+    // Create CSV file and upload to backend
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvFile = new File([blob], `face-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`, { type: 'text/csv;charset=utf-8;' });
+      
+    if (this.userId) {
+      this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'face_data', csvFile).subscribe({
+        next: (document) => {
+          console.log('📊 Face CSV data uploaded as document:', document);
+        },
+        error: (err) => {
+          console.error('❌ Error uploading face CSV data as document:', err);
+        }
+      });
+    }
+      
+    console.log('📤 Face CSV data upload initiated');
+  /**
+   * Generate and download CSV file for hands data
+   */
+  downloadHandsCSV(): void {
+    console.log('📥 Downloading hands CSV data');
+      
+    if (this.handsDataHistory.length === 0) {
+      console.log('⏭️ No hands data available');
+      return;
+    }
+      
+    // Generate CSV content
+    let csvContent = 'Timestamp,Left Gesture,Left Handedness,Left Landmarks Count,Right Gesture,Right Handedness,Right Landmarks Count\n';
+      
+    this.handsDataHistory.forEach(entry => {
+      const data = entry.data;
+      const row = [
+        entry.timestamp,
+        data.left?.gesture || 'unknown',
+        data.left?.handedness || 'unknown',
+        data.left?.landmarks?.length || 0,
+        data.right?.gesture || 'unknown',
+        data.right?.handedness || 'unknown',
+        data.right?.landmarks?.length || 0
+      ].join(',');
+      csvContent += row + '\n';
+    });
+      
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hands-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+      
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+      
+    console.log('📥 Hands CSV data downloaded');
+  }
+  
+  /**
+   * Generate and upload CSV file for hands data to backend
+   */
+  uploadHandsCSV(): void {
+    console.log('📤 Uploading hands CSV data to backend');
+      
+    if (this.handsDataHistory.length === 0) {
+      console.log('⏭️ No hands data available');
+      return;
+    }
+      
+    // Generate CSV content
+    let csvContent = 'Timestamp,Left Gesture,Left Handedness,Left Landmarks Count,Right Gesture,Right Handedness,Right Landmarks Count\n';
+      
+    this.handsDataHistory.forEach(entry => {
+      const data = entry.data;
+      const row = [
+        entry.timestamp,
+        data.left?.gesture || 'unknown',
+        data.left?.handedness || 'unknown',
+        data.left?.landmarks?.length || 0,
+        data.right?.gesture || 'unknown',
+        data.right?.handedness || 'unknown',
+        data.right?.landmarks?.length || 0
+      ].join(',');
+      csvContent += row + '\n';
+    });
+      
+    // Create CSV file and upload to backend
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvFile = new File([blob], `hands-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`, { type: 'text/csv;charset=utf-8;' });
+      
+    if (this.userId) {
+      this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'hands_data', csvFile).subscribe({
+        next: (document) => {
+          console.log('📊 Hands CSV data uploaded as document:', document);
+        },
+        error: (err) => {
+          console.error('❌ Error uploading hands CSV data as document:', err);
+        }
+      });
+    }
+      
+    console.log('📤 Hands CSV data upload initiated');
+  }
+  
+  /**
+   * Download all CSV data as a ZIP file
+   */
+  downloadAllCSV(): void {
+    console.log('📥 Downloading all CSV data');
+      
+    // For simplicity, we'll download each CSV separately
+    this.downloadPoseCSV();
+    this.downloadFaceCSV();
+    this.downloadHandsCSV();
+      
+    console.log('📥 All CSV data download initiated');
+  }
+   * Upload all CSV data to backend
+   */
+  uploadAllCSV(): void {
+    console.log('📤 Uploading all CSV data to backend');
+      
+    // Upload each CSV separately
+    this.uploadPoseCSV();
+    this.uploadFaceCSV();
+    this.uploadHandsCSV();
+      
+    console.log('📤 All CSV data upload initiated');
+  /**
+   * Create a temporary video from the analysis period
+   */
+  private createTemporaryVideo(): void {
+    console.log('🎥 Creating temporary video from analysis period');
+      
+    if (!this.analysisStartTime || !this.analysisEndTime) {
+      console.log('⏭️ Analysis start or end time not set');
+      return;
+    }
+      
+    const duration = this.analysisEndTime - this.analysisStartTime;
+    console.log(`⏱️ Analysis duration: ${duration}ms`);
+      
+    // For now, we'll create a placeholder blob
+    // In a real implementation, you would combine all the captured video segments
+    const videoData = `Video analysis from ${new Date(this.analysisStartTime).toLocaleTimeString()} to ${new Date(this.analysisEndTime).toLocaleTimeString()}`;
+    const blob = new Blob([videoData], { type: 'text/plain' });
+    this.temporaryVideoBlob = blob;
+      
+    console.log('🎥 Temporary video created');
+      
+    // You could also save this to the captured videos array
+    const videoMetadata = {
+      type: 'temporary_analysis_video',
+      startTime: this.analysisStartTime,
+      endTime: this.analysisEndTime,
+      duration: duration,
+      fileSize: blob.size
+    };
+      
+    this.capturedVideos.push({ blob, metadata: videoMetadata });
+      
+    // Upload the temporary video to the backend
+    if (this.userId) {
+      const videoFile = new File([blob], `analysis-video-${new Date(this.analysisStartTime).toISOString().slice(0, 19).replace(/:/g, '-')}.txt`, { type: 'text/plain' });
+      this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'analysis_video', videoFile).subscribe({
+        next: (document) => {
+          console.log('📹 Analysis video uploaded as document:', document);
+        },
+        error: (err) => {
+          console.error('❌ Error uploading analysis video as document:', err);
+        }
+      });
+    }
+      
+    // Notify user that temporary video is ready
+    console.log('✅ Temporary analysis video is ready for download');
+  }
    * Send captured video and movement data to both Spring Boot and Django AI backends
    */
   private sendCapturedDataToBackends(): void {

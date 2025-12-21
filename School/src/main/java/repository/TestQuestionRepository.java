@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long> {
     List<TestQuestion> findByCourseTestId(Long courseTestId);
+    List<TestQuestion> findByCourseLessonId(Long courseLessonId);
 }

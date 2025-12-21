@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { TestService, CourseTest } from '../../services/test.service';
+import { TestService, CourseTest, CourseLesson } from '../../services/test.service';
+import { AuthService, User } from '../../auth.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -17,10 +18,14 @@ export class CourseTestFormComponent implements OnInit {
   courseTestID: number | null = null;
   loading: boolean = false;
   error: string = '';
+  courseLessons: CourseLesson[] = [];
 
+  currentUser: User | null = null;
+  
   constructor(
     private fb: FormBuilder,
     private testService: TestService,
+    private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router
   ) {
@@ -35,6 +40,15 @@ export class CourseTestFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Get current user
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+      // Load course lessons for dropdown filtered by current user
+      if (this.currentUser) {
+        this.loadCourseLessonsForUser(this.currentUser.id);
+      }
+    });
+    
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode = true;
@@ -60,6 +74,17 @@ export class CourseTestFormComponent implements OnInit {
         this.error = 'Error loading course test';
         this.loading = false;
         console.error(error);
+      }
+    });
+  }
+  
+  loadCourseLessonsForUser(userId: number): void {
+    this.testService.getLessonsForUser(userId).subscribe({
+      next: (courseLessons) => {
+        this.courseLessons = courseLessons;
+      },
+      error: (error) => {
+        console.error('Error loading course lessons for user:', error);
       }
     });
   }
