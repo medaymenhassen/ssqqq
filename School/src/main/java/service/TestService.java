@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -129,6 +130,7 @@ public class TestService {
         return testQuestionRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public List<TestQuestionDTO> getAllTestQuestionsWithDTO() {
         return testQuestionRepository.findAll().stream()
                 .peek(question -> {

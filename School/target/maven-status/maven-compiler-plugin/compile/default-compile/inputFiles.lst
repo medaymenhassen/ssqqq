@@ -2,12 +2,15 @@ D:\final\3Dproject\School\src\main\java\model\Role.java
 D:\final\3Dproject\School\src\main\java\dto\TestAnswerDTO.java
 D:\final\3Dproject\School\src\main\java\repository\UserLessonCompletionRepository.java
 D:\final\3Dproject\School\src\main\java\dto\ForgotPasswordRequest.java
+D:\final\3Dproject\School\src\main\java\repository\OfferRepository.java
+D:\final\3Dproject\School\src\main\java\model\UserOffer.java
 D:\final\3Dproject\School\src\main\java\model\UserTypeDefinitionBackup.java
 D:\final\3Dproject\School\src\main\java\dto\TestQuestionDTO.java
 D:\final\3Dproject\School\src\main\java\service\DocumentService.java
 D:\final\3Dproject\School\src\main\java\service\TestMapperService.java
 D:\final\3Dproject\School\src\main\java\model\Document.java
 D:\final\3Dproject\School\src\main\java\repository\UserDomainCompletionRepository.java
+D:\final\3Dproject\School\src\main\java\controller\CsvVideoController.java
 D:\final\3Dproject\School\src\main\java\controller\UserTypeController.java
 D:\final\3Dproject\School\src\main\java\SchoolApplication.java
 D:\final\3Dproject\School\src\main\java\model\Course.java
@@ -23,6 +26,7 @@ D:\final\3Dproject\School\src\main\java\dto\SubUserResponse.java
 D:\final\3Dproject\School\src\main\java\model\UserType.java
 D:\final\3Dproject\School\src\main\java\controller\TestController.java
 D:\final\3Dproject\School\src\main\java\repository\CourseRepository.java
+D:\final\3Dproject\School\src\main\java\service\OfferService.java
 D:\final\3Dproject\School\src\main\java\controller\AuthController.java
 D:\final\3Dproject\School\src\main\java\repository\CourseLessonRepository.java
 D:\final\3Dproject\School\src\main\java\config\JacksonConfig.java
@@ -57,6 +61,7 @@ D:\final\3Dproject\School\src\main\java\repository\UserCourseCompletionRepositor
 D:\final\3Dproject\School\src\main\java\repository\TokenBlacklistRepository.java
 D:\final\3Dproject\School\src\main\java\repository\UserTypeRepository.java
 D:\final\3Dproject\School\src\main\java\model\ChatConversation.java
+D:\final\3Dproject\School\src\main\java\config\RequestLoggingFilter.java
 D:\final\3Dproject\School\src\main\java\model\User.java
 D:\final\3Dproject\School\src\main\java\model\UserTestResult.java
 D:\final\3Dproject\School\src\main\java\repository\MeetingRequestRepository.java
@@ -72,6 +77,7 @@ D:\final\3Dproject\School\src\main\java\model\UserLessonCompletion.java
 D:\final\3Dproject\School\src\main\java\model\Registration.java
 D:\final\3Dproject\School\src\main\java\repository\CourseTestRepository.java
 D:\final\3Dproject\School\src\main\java\model\MeetingRequest.java
+D:\final\3Dproject\School\src\main\java\controller\OfferController.java
 D:\final\3Dproject\School\src\main\java\service\JwtService.java
 D:\final\3Dproject\School\src\main\java\model\CourseModule.java
 D:\final\3Dproject\School\src\main\java\repository\TestAnswerRepository.java
@@ -83,8 +89,10 @@ D:\final\3Dproject\School\src\main\java\model\RefreshToken.java
 D:\final\3Dproject\School\src\main\java\controller\SpecialUserRequestController.java
 D:\final\3Dproject\School\src\main\java\util\JwtUtil.java
 D:\final\3Dproject\School\src\main\java\model\TestQuestion.java
+D:\final\3Dproject\School\src\main\java\repository\UserOfferRepository.java
 D:\final\3Dproject\School\src\main\java\repository\UserRepository.java
 D:\final\3Dproject\School\src\main\java\security\JwtAuthenticationFilter.java
+D:\final\3Dproject\School\src\main\java\model\Offer.java
 D:\final\3Dproject\School\src\main\java\config\SecurityConfig.java
 D:\final\3Dproject\School\src\main\java\repository\UserTestResultRepository.java
 D:\final\3Dproject\School\src\main\java\dto\CourseTestDTO.java

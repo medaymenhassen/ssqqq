@@ -2,6 +2,7 @@ package com.auth.controller;
 
 import com.auth.dto.CourseLessonDTO;
 import com.auth.service.CourseLessonService;
+import com.auth.service.OfferService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +17,9 @@ public class CourseLessonController {
 
     @Autowired
     private CourseLessonService courseLessonService;
+    
+    @Autowired
+    private OfferService offerService;
 
     @GetMapping
     public List<CourseLessonDTO> getAllCourseLessons() {
@@ -23,7 +27,15 @@ public class CourseLessonController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CourseLessonDTO> getCourseLessonById(@PathVariable Long id) {
+    public ResponseEntity<CourseLessonDTO> getCourseLessonById(@PathVariable Long id, @RequestParam(required = false) Long userId) {
+        // If userId is provided, check if user has access to content
+        if (userId != null) {
+            boolean hasAccess = offerService.userHasAccessToContent(userId);
+            if (!hasAccess) {
+                return ResponseEntity.status(403).build(); // Forbidden
+            }
+        }
+        
         return courseLessonService.getCourseLessonById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -56,8 +68,15 @@ public class CourseLessonController {
     }
     
     @GetMapping("/user/{userId}")
-    public List<CourseLessonDTO> getLessonsForUser(@PathVariable Long userId) {
-        return courseLessonService.getLessonsForUser(userId);
+    public ResponseEntity<?> getLessonsForUser(@PathVariable Long userId) {
+        // Check if user has access to content
+        boolean hasAccess = offerService.userHasAccessToContent(userId);
+        if (!hasAccess) {
+            return ResponseEntity.status(403).body("Access denied. Please purchase an offer to view lessons.");
+        }
+        
+        List<CourseLessonDTO> lessons = courseLessonService.getLessonsForUser(userId);
+        return ResponseEntity.ok(lessons);
     }
 
     @PostMapping("/user/{userId}/lesson/{lessonId}/complete")

@@ -8,6 +8,7 @@ import com.auth.model.TestQuestion;
 import com.auth.model.TestAnswer;
 import com.auth.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -50,8 +51,15 @@ public class TestController {
 
     // TestQuestion endpoints
     @GetMapping("/questions")
-    public List<TestQuestionDTO> getAllTestQuestions() {
-        return testService.getAllTestQuestionsWithDTO();
+    public ResponseEntity<List<TestQuestionDTO>> getAllTestQuestions() {
+        try {
+            List<TestQuestionDTO> questions = testService.getAllTestQuestionsWithDTO();
+            return ResponseEntity.ok(questions);
+        } catch (Exception e) {
+            // Log the error for debugging
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/questions/lesson/{lessonId}")
