@@ -84,12 +84,10 @@ export class DataService {
       }));
       formData.append('video', videoBlob, 'video.webm');
       
-      const req = new HttpRequest('POST', this.apiUrl + '/with-video', formData, {
+      return this.http.post<DataRecord>(this.apiUrl + '/with-video', formData, {
         headers: headers,
         reportProgress: true
       });
-      
-      return this.http.request(req);
     } else {
       // Otherwise, send as regular JSON
       headers = headers.set('Content-Type', 'application/json');
