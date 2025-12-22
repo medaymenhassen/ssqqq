@@ -115,15 +115,21 @@ export class TestService {
 
   // TestQuestion methods
   getAllTestQuestions(): Observable<TestQuestion[]> {
-    return this.http.get<TestQuestion[]>(`${this.apiUrl}/tests/questions`);
+    return this.http.get<TestQuestion[]>(`${this.apiUrl}/tests/questions`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   getTestQuestionsByLessonId(lessonId: number): Observable<TestQuestion[]> {
-    return this.http.get<TestQuestion[]>(`${this.apiUrl}/tests/questions/lesson/${lessonId}`);
+    return this.http.get<TestQuestion[]>(`${this.apiUrl}/tests/questions/lesson/${lessonId}`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   getTestQuestionById(id: number): Observable<TestQuestion> {
-    return this.http.get<TestQuestion>(`${this.apiUrl}/tests/questions/${id}`);
+    return this.http.get<TestQuestion>(`${this.apiUrl}/tests/questions/${id}`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   createTestQuestion(testQuestion: TestQuestion): Observable<TestQuestion> {
@@ -177,11 +183,19 @@ export class TestService {
   
   // CourseLesson methods
   getAllCourseLessons(): Observable<CourseLesson[]> {
-    return this.http.get<CourseLesson[]>(`${this.apiUrl}/course-lessons`);
+    return this.http.get<CourseLesson[]>(`${this.apiUrl}/course-lessons`, {
+      headers: this.getAuthHeaders()
+    });
   }
   
-  getCourseLessonById(id: number): Observable<CourseLesson> {
-    return this.http.get<CourseLesson>(`${this.apiUrl}/course-lessons/${id}`);
+  getCourseLessonById(id: number, userId?: number): Observable<CourseLesson> {
+    let url = `${this.apiUrl}/course-lessons/${id}`;
+    if (userId) {
+      url += `?userId=${userId}`;
+    }
+    return this.http.get<CourseLesson>(url, {
+      headers: this.getAuthHeaders()
+    });
   }
   
   createCourseLesson(courseLesson: CourseLesson): Observable<CourseLesson> {
@@ -232,14 +246,6 @@ export class TestService {
     
     // Create headers without Content-Type for multipart/form-data
     const headers = this.getAuthHeaders().delete('Content-Type');
-    
-    console.log('Sending document upload request:', { testAnswerId, fileName: file.name, fileSize: file.size });
-    
-    // Log the FormData contents for debugging
-    console.log('FormData contents:');
-    for (let pair of (formData as any).entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
-    }
     
     return this.http.post(`${this.apiUrl}/documents/upload-for-test-answer`, formData, {
       headers: headers

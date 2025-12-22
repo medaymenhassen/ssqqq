@@ -40,6 +40,9 @@
         <button class="btn btn-info" *ngIf="temporaryVideoBlob" (click)="downloadTemporaryVideo()">
           📥 Télécharger Vidéo
         </button>
+        <button class="btn btn-success" *ngIf="temporaryVideoBlob" (click)="uploadTemporaryVideo()">
+          ☁️ Envoyer Vidéo
+        </button>
         <div class="dropdown" *ngIf="isVideoInitialized" #csvDropdown>
           <button class="btn btn-success dropdown-toggle" type="button" (click)="toggleCsvDropdown()" aria-expanded="false">
             📊 Exporter Données CSV

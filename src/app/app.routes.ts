@@ -15,10 +15,16 @@ import { QuestionAnswerManagerComponent } from './components/question-answer-man
 import { CourseLessonListComponent } from './components/course-lesson-list/course-lesson-list.component';
 import { CourseLessonFormComponent } from './components/course-lesson-form/course-lesson-form.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
+import { ImageAnalysisComponent } from './image-analysis/image-analysis.component';
+import { OfferListComponent } from './offer/offer-list.component';
+import { OfferCreateComponent } from './offer/offer-create.component';
+import { OfferEditComponent } from './offer/offer-edit.component';
+import { LandingComponent } from './landing/landing.component';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/bodyanalytics', pathMatch: 'full' },
+  { path: '', component: LandingComponent, pathMatch: 'full' },
   { path: 'bodyanalytics', component: VideoComponent },
+  { path: 'image-analysis', component: ImageAnalysisComponent },
   { path: 'data', component: DataViewerComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
@@ -41,5 +47,8 @@ export const routes: Routes = [
   { path: 'course-lessons/:id/edit', component: CourseLessonFormComponent },
   { path: 'profile', component: UserProfileComponent },
   { path: 'profile/:id', component: UserProfileComponent },
-  { path: '**', redirectTo: '/bodyanalytics' }
+  { path: 'offers', component: OfferListComponent },
+  { path: 'offers/create', component: OfferCreateComponent },
+  { path: 'offers/edit/:id', component: OfferEditComponent },
+  { path: '**', redirectTo: '/' }
 ];

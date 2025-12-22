@@ -1,32 +1,27 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
 import { AuthService } from '../../auth.service';
+import { User } from '../../auth.service';
+import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-navigation',
-  standalone: true,
-  imports: [RouterModule, CommonModule],
+  imports: [RouterModule, NgIf],
   templateUrl: './navigation.component.html',
   styleUrls: ['./navigation.component.scss']
 })
 export class NavigationComponent implements OnInit {
-  isMenuOpen = false;
-  isLoggedIn = false;
+  currentUser: User | null = null;
 
   constructor(private authService: AuthService) {}
 
   ngOnInit(): void {
     this.authService.currentUser.subscribe(user => {
-      this.isLoggedIn = !!user;
+      this.currentUser = user;
     });
   }
 
-  toggleMenu() {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
-
-  onLogout(): void {
+  logout(): void {
     this.authService.logout();
   }
 }

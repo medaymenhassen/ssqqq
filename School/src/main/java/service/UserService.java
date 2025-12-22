@@ -57,7 +57,7 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        logger.info("Loading user by username: {}", username);
+        logger.info("🔵 Loading user by username: {}", username);
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
         
@@ -65,7 +65,12 @@ public class UserService implements UserDetailsService {
         logger.info("User enabled: {}, account expired: {}, account locked: {}, credentials expired: {}", 
             user.isEnabled(), !user.isAccountNonExpired(), !user.isAccountNonLocked(), !user.isCredentialsNonExpired());
         
-        return org.springframework.security.core.userdetails.User.builder()
+        // Log user authorities
+        user.getAuthorities().forEach(authority -> {
+            logger.info("User authority: {}", authority.getAuthority());
+        });
+        
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPassword())
                 .authorities(user.getAuthorities())
@@ -74,6 +79,9 @@ public class UserService implements UserDetailsService {
                 .credentialsExpired(!user.isCredentialsNonExpired())
                 .disabled(!user.isEnabled())
                 .build();
+        
+        logger.info("✅ User details built successfully for: {}", username);
+        return userDetails;
     }
 
     public Optional<User> findByEmail(String email) {

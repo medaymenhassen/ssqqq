@@ -31,7 +31,15 @@ public class JwtUtil {
     }
 
     public String getRoleFromToken(String token) {
-        return getClaimFromToken(token, claims -> claims.get("role", String.class));
+        try {
+            // More robust way to extract role
+            Claims claims = getAllClaimsFromToken(token);
+            String role = claims.get("role", String.class);
+            
+            return role;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
@@ -41,7 +49,9 @@ public class JwtUtil {
 
     private Claims getAllClaimsFromToken(String token) {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        System.out.println("JWT Util - All claims from token: " + claims);
+        return claims;
     }
 
     private Boolean isTokenExpired(String token) {
@@ -67,7 +77,20 @@ public class JwtUtil {
     }
 
     public Boolean validateToken(String token, String username) {
-        final String extractedUsername = getUsernameFromToken(token);
-        return (extractedUsername.equals(username) && !isTokenExpired(token));
+        try {
+            final String extractedUsername = getUsernameFromToken(token);
+            System.out.println("JWT Util - Validating token: extractedUsername='" + extractedUsername + "', expected='" + username + "'");
+            
+            boolean usernameMatch = extractedUsername != null && extractedUsername.equals(username);
+            boolean notExpired = !isTokenExpired(token);
+            
+            System.out.println("JWT Util - Validation result: usernameMatch=" + usernameMatch + ", notExpired=" + notExpired);
+            
+            return usernameMatch && notExpired;
+        } catch (Exception e) {
+            System.out.println("JWT Util - Error validating token: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 }

@@ -1,0 +1,49 @@
+<div class="data-viewer-container">
+  <h2>📊 Données Capturées</h2>
+  
+  <div class="controls">
+    <button (click)="loadData()" class="btn btn-primary">🔄 Actualiser</button>
+    <input type="number" [(ngModel)]="userId" placeholder="ID Utilisateur" class="user-id-input">
+  </div>
+  
+  <div class="data-list">
+    <div *ngFor="let record of dataRecords" class="data-card">
+      <div class="card-header">
+        <h3>ID: {{ record.id }} - {{ record.timestamp | date:'short' }}</h3>
+        <span class="movement-badge" [class.active]="record.movementDetected">
+          {{ record.movementDetected ? '🏃 Mouvement' : '⏸️ Aucun' }}
+        </span>
+      </div>
+      
+      <div class="card-content">
+        <div class="image-preview" *ngIf="record.imageData">
+          <img [src]="'data:image/jpeg;base64,' + record.imageData" alt="Capture" class="preview-image">
+        </div>
+        
+        <div class="data-details">
+          <p><strong>Position:</strong> {{ record.position?.x | number:'1.2-2' }}, {{ record.position?.y | number:'1.2-2' }}</p>
+          <p><strong>Vitesse:</strong> {{ record.velocity || 0 | number:'1.2-2' }} px/s</p>
+          <p><strong>Direction:</strong> {{ record.direction || 0 | number:'1.2-2' }}°</p>
+          <p><strong>Confiance:</strong> {{ record.confidence || 0 | number:'1.2-2' }}%</p>
+        </div>
+        
+        <div class="actions">
+          <button (click)="downloadData(record)" class="btn btn-secondary">📥 Télécharger</button>
+          <button (click)="deleteRecord(record.id)" class="btn btn-danger">🗑️ Supprimer</button>
+        </div>
+      </div>
+    </div>
+    
+    <div *ngIf="dataRecords.length === 0" class="no-data">
+      <p>Aucune donnée disponible. Cliquez sur "Actualiser" pour charger les données.</p>
+    </div>
+  </div>
+  
+  <div *ngIf="loading" class="loading">
+    Chargement des données...
+  </div>
+  
+  <div *ngIf="error" class="error">
+    {{ error }}
+  </div>
+</div>

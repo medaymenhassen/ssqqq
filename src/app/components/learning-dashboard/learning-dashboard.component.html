@@ -1,0 +1,81 @@
+<div class="learning-dashboard">
+  <div class="dashboard-header">
+    <h1>Tableau de Bord d'Apprentissage</h1>
+    <p>Optimisez votre parcours d'apprentissage avec CognitiEx</p>
+  </div>
+
+  <!-- Progress Summary -->
+  <div class="progress-summary">
+    <div class="summary-card">
+      <h3>Objectifs Totals</h3>
+      <p class="summary-value">{{ progressSummary.total }}</p>
+    </div>
+    <div class="summary-card">
+      <h3>Terminés</h3>
+      <p class="summary-value">{{ progressSummary.completed }}</p>
+    </div>
+    <div class="summary-card">
+      <h3>En Cours</h3>
+      <p class="summary-value">{{ progressSummary.inProgress }}</p>
+    </div>
+  </div>
+
+  <!-- Recommended Objectives -->
+  <div class="section">
+    <h2>Recommandé pour vous</h2>
+    <div class="objectives-grid">
+      <div *ngFor="let objective of recommendedObjectives" class="objective-card">
+        <div class="objective-header">
+          <h3>{{ objective.title }}</h3>
+          <span [class]="getDifficultyClass(objective.difficulty)" class="difficulty-tag">
+            {{ getTitleCase(objective.difficulty) }}
+          </span>
+        </div>
+        <p class="objective-description">{{ objective.description }}</p>
+        <div class="objective-meta">
+          <span class="meta-item">
+            <i class="icon-clock"></i>
+            {{ formatTime(objective.estimatedTime) }}
+          </span>
+          <span class="meta-item">
+            <i class="icon-category"></i>
+            {{ objective.category }}
+          </span>
+        </div>
+        <div class="objective-tags">
+          <span *ngFor="let tag of objective.tags" class="tag">{{ tag }}</span>
+        </div>
+        <div class="objective-actions">
+          <button class="btn btn-primary">Commencer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Objectives -->
+  <div class="section">
+    <h2>Tous les Objectifs d'Apprentissage</h2>
+    <div class="objectives-list">
+      <div *ngFor="let objective of learningObjectives" class="objective-item">
+        <div class="objective-info">
+          <h4>{{ objective.title }}</h4>
+          <p>{{ objective.description }}</p>
+        </div>
+        <div class="objective-progress">
+          <ng-container *ngIf="getProgressForObjective(objective.id) as progress">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="progress.progress"></div>
+            </div>
+            <span class="progress-text">{{ progress.progress }}%</span>
+            <span class="completion-status" [class.completed]="progress.completed">
+              {{ progress.completed ? 'Terminé' : 'En cours' }}
+            </span>
+          </ng-container>
+          <ng-container *ngIf="!getProgressForObjective(objective.id)">
+            <span class="not-started">Non commencé</span>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

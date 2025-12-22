@@ -1,22 +1,53 @@
-<nav class="navbar">
-  <div class="nav-container">
-    <a routerLink="/" class="nav-logo">EduPlatform</a>
-    
-    <div class="nav-menu" [class.active]="isMenuOpen">
-      <a routerLink="/bodyanalytics" class="nav-link">Home</a>
-      <a routerLink="/user-types" class="nav-link">User Types</a>
-      <a routerLink="/users" class="nav-link">Users</a>
-      <a routerLink="/course-tests" class="nav-link">Course Tests</a>
-      <a routerLink="/course-lessons" class="nav-link">Course Lessons</a>
-      <a routerLink="/data" class="nav-link">Data</a>
-      <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-link">Login</a>
-      <a *ngIf="isLoggedIn" (click)="onLogout()" class="nav-link">Logout</a>
-    </div>
-    
-    <div class="nav-toggle" (click)="toggleMenu()">
-      <span class="bar"></span>
-      <span class="bar"></span>
-      <span class="bar"></span>
+<header class="header">
+  <div class="container">
+    <div class="header-content">
+      <!-- Logo -->
+      <div class="logo">
+        <a routerLink="/" class="logo-link">
+          <img src="/logo.jpg" alt="CognitiEx Logo" class="logo-img">
+          <span class="logo-text">CognitiEx</span>
+        </a>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="nav-menu">
+        <ul class="nav-list">
+          <li class="nav-item">
+            <a routerLink="/" class="nav-link" routerLinkActive="active">Accueil</a>
+          </li>
+          <li class="nav-item">
+            <a routerLink="/bodyanalytics" class="nav-link" routerLinkActive="active">Analyse Corporelle</a>
+          </li>
+          <li class="nav-item">
+            <a routerLink="/image-analysis" class="nav-link" routerLinkActive="active">Analyse d'Image</a>
+          </li>
+          <li class="nav-item">
+            <a routerLink="/courses" class="nav-link" routerLinkActive="active">Cours</a>
+          </li>
+          <li class="nav-item">
+            <a routerLink="/tests" class="nav-link" routerLinkActive="active">Tests</a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- User Menu -->
+      <div class="user-menu">
+        <ng-container *ngIf="currentUser; else loginSection">
+          <div class="user-info">
+            <span class="user-name">{{ currentUser.firstname }} {{ currentUser.lastname }}</span>
+            <div class="user-actions">
+              <a routerLink="/profile" class="btn btn-outline">Profil</a>
+              <button (click)="logout()" class="btn btn-primary">Déconnexion</button>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #loginSection>
+          <div class="auth-actions">
+            <a routerLink="/login" class="btn btn-outline">Connexion</a>
+            <a routerLink="/register" class="btn btn-primary">Inscription</a>
+          </div>
+        </ng-template>
+      </div>
     </div>
   </div>
-</nav>
+</header>

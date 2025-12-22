@@ -300,4 +300,55 @@ public class DocumentService {
             return "OTHER";
         }
     }
+    
+    public Document uploadDocumentForBodyAnalysis(Long userId, MultipartFile file, String analysisType) throws IOException {
+        // Get user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Generate unique filename
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+
+        // Save file to disk
+        Path filePath = uploadPath.resolve(uniqueFilename);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        // Create document record
+        Document document = new Document();
+        document.setFileName(originalFilename);
+        document.setFileType(getFileType(file.getContentType(), file));
+        document.setFilePath(filePath.toString());
+        document.setFileSize(file.getSize());
+        document.setUser(user);
+        document.setUploadedAt(LocalDateTime.now());
+        document.setApproved(false); // Default to not approved
+        
+        // Add analysis type information to the filename or as metadata
+        if (analysisType != null && !analysisType.isEmpty()) {
+            document.setFileName("body_analysis_" + analysisType + "_" + originalFilename);
+        } else {
+            document.setFileName("body_analysis_" + originalFilename);
+        }
+
+        return documentRepository.save(document);
+    }
+    
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId).orElse(null);
+    }
+    
+    public Document getDocumentById(Long documentId) {
+        return documentRepository.findById(documentId).orElse(null);
+    }
 }

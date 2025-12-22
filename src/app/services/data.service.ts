@@ -102,7 +102,6 @@ export class DataService {
   saveDataRecordLocal(record: DataRecord): Observable<DataRecord> {
     const newRecord = { ...record, id: this.nextId++ };
     this.localDataStore.push(newRecord);
-    console.log('💾 Saved data record locally:', newRecord);
     return of(newRecord);
   }
 

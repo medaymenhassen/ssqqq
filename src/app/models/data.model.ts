@@ -7,4 +7,11 @@ export interface DataRecord {
   jsonData?: any;     // JSON text data (Q&A, etc.)
   timestamp: Date;
   movementDetected: boolean;
+  position?: {
+    x: number;
+    y: number;
+  };
+  velocity?: number;
+  direction?: number;
+  confidence?: number;
 }

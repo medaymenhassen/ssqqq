@@ -6,6 +6,7 @@ import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-user-type-form',
+  standalone: true,
   imports: [ReactiveFormsModule, NgIf],
   templateUrl: './user-type-form.component.html',
   styleUrl: './user-type-form.component.scss'

@@ -84,6 +84,12 @@ public class User implements UserDetails {
     
     @Column(name = "ccpa_accepted_at")
     private LocalDateTime ccpaAcceptedAt;
+    
+    @Column(name = "commercial_use_consent")
+    private Boolean commercialUseConsent = false;
+    
+    @Column(name = "commercial_use_consent_at")
+    private LocalDateTime commercialUseConsentAt;
 
     public Long getId() {
         return id;
@@ -235,6 +241,22 @@ public class User implements UserDetails {
 
     public void setCcpaAcceptedAt(LocalDateTime ccpaAcceptedAt) {
         this.ccpaAcceptedAt = ccpaAcceptedAt;
+    }
+
+    public Boolean getCommercialUseConsent() {
+        return commercialUseConsent;
+    }
+
+    public void setCommercialUseConsent(Boolean commercialUseConsent) {
+        this.commercialUseConsent = commercialUseConsent;
+    }
+
+    public LocalDateTime getCommercialUseConsentAt() {
+        return commercialUseConsentAt;
+    }
+
+    public void setCommercialUseConsentAt(LocalDateTime commercialUseConsentAt) {
+        this.commercialUseConsentAt = commercialUseConsentAt;
     }
 
     // Additional methods for compatibility

@@ -95,11 +95,9 @@ export class VideoService {
   constructor() {}
 
   async initializeMediaPipe(): Promise<void> {
-    console.log('🔄 Initializing MediaPipe...');
     
     // Only initialize MediaPipe in browser environment
     if (typeof window === 'undefined') {
-      console.log('⏭️ Skipping MediaPipe initialization in server environment');
       return;
     }
     
@@ -280,9 +278,7 @@ export class VideoService {
   }
 
   private processResults(results: any): void {
-    console.log('🔄 Processing results:', results);
     if (!results) {
-      console.log('🔄 No results to process');
       return;
     }
 
@@ -298,13 +294,8 @@ export class VideoService {
 
       // Process pose
       if (results.poseLandmarks && results.poseLandmarks.length > 0) {
-        console.log('📍 Processing pose with landmarks:', results.poseLandmarks.length);
-        console.log('📍 Sample pose landmarks:', results.poseLandmarks.slice(0, 5));
         poseData = this.convertPoseToKalidokit(results.poseLandmarks, results.poseWorldLandmarks);
         poseConfidence = this.calculatePoseConfidence(results.poseLandmarks);
-        console.log('📍 Pose détectée:', poseConfidence + '%');
-      } else {
-        console.log('📍 No pose landmarks detected');
       }
 
       // Process hands
@@ -323,14 +314,12 @@ export class VideoService {
           handedness: 'right',
           gesture: this.detectHandGesture(results.rightHandLandmarks)
         };
-        console.log('👋 Main droite:', rightHand.gesture);
       }
 
       // Process face
       if (results.faceLandmarks && results.faceLandmarks.length > 0) {
         faceData = this.convertFaceToKalidokit(results.faceLandmarks);
         faceConfidence = this.calculateFaceConfidence(results.faceLandmarks);
-        console.log('😊 Visage détecté:', faceConfidence + '%');
       }
 
       const bodyMetrics = this.calculateBodyMetrics(poseData, faceData);
@@ -364,7 +353,6 @@ export class VideoService {
     try {
       // Validate inputs before processing
       if (!landmarks || !Array.isArray(landmarks) || landmarks.length === 0) {
-        console.log('🔄 No landmarks to convert');
         return {};
       }
       

@@ -2,16 +2,16 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from .models import MovementRecord, PoseData, FaceData, HandData
 from .serializers import MovementRecordSerializer, MovementRecordCreateSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.contrib.auth.models import User
 import json
 
 
 class MovementRecordListCreateView(generics.ListCreateAPIView):
-    queryset = MovementRecord.objects.all()
     serializer_class = MovementRecordSerializer
 
     def get_queryset(self):
@@ -19,6 +19,14 @@ class MovementRecordListCreateView(generics.ListCreateAPIView):
         if user_id:
             return MovementRecord.objects.filter(user_id=user_id)
         return MovementRecord.objects.all()
+
+    def perform_create(self, serializer):
+        user_id = self.request.data.get('user')
+        if user_id:
+            user = User.objects.get(id=user_id)
+            serializer.save(user=user)
+        else:
+            serializer.save()
 
 
 class MovementRecordDetailView(generics.RetrieveUpdateDestroyAPIView):

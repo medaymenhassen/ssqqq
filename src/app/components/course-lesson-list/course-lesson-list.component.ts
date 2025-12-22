@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { TestService, CourseLesson } from '../../services/test.service';
+import { AuthService } from '../../auth.service';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
@@ -8,21 +9,37 @@ import { RouterModule } from '@angular/router';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './course-lesson-list.component.html',
-  styleUrls: ['./course-lesson-list.component.scss']
+  styleUrls: ['./course-lesson-list.component.scss'],
+  providers: [AuthService]
 })
 export class CourseLessonListComponent implements OnInit {
   lessons: CourseLesson[] = [];
   loading: boolean = false;
   error: string = '';
 
-  constructor(private testService: TestService) {}
+  userId: number | null = null;
+
+  constructor(
+    private testService: TestService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
+    this.loadCurrentUser();
     this.loadCourseLessons();
+  }
+
+  private loadCurrentUser(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser) {
+      this.userId = currentUser.id;
+    }
   }
 
   loadCourseLessons(): void {
     this.loading = true;
+    // If user is logged in, we still call getAllCourseLessons which doesn't require access control
+    // For individual lesson access, we would pass userId to getCourseLessonById
     this.testService.getAllCourseLessons().subscribe({
       next: (lessons) => {
         this.lessons = lessons;

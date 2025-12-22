@@ -72,7 +72,6 @@ com\auth\model\UserTestResult.class
 com\auth\model\PasswordResetToken.class
 com\auth\repository\OfferRepository.class
 com\auth\service\UserService.class
-com\auth\config\JacksonConfig.class
 com\auth\config\SecurityConfig.class
 com\auth\model\CourseLesson.class
 com\auth\model\User.class

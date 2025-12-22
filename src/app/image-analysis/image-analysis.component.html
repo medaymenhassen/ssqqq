@@ -1,0 +1,42 @@
+<div class="container">
+  <h2>Analyse d'Image pour Mouvements Corporels</h2>
+  
+  <div class="upload-section">
+    <input type="file" (change)="onFileSelected($event)" accept="image/*" />
+    <button (click)="analyzeImage()" [disabled]="!selectedFile || isAnalyzing">
+      {{ isAnalyzing ? 'Analyse en cours...' : 'Analyser l\'Image' }}
+    </button>
+  </div>
+  
+  <div *ngIf="analysisResult" class="results-section">
+    <h3>Résultats de l'Analyse</h3>
+    
+    <div class="confidence-meters">
+      <div class="meter">
+        <label>Confiance du Corps: {{ analysisResult.poseConfidence }}%</label>
+        <div class="progress-bar">
+          <div class="progress" [style.width.%]="analysisResult.poseConfidence"></div>
+        </div>
+      </div>
+      
+      <div class="meter">
+        <label>Confiance du Visage: {{ analysisResult.faceConfidence }}%</label>
+        <div class="progress-bar">
+          <div class="progress" [style.width.%]="analysisResult.faceConfidence"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button (click)="downloadPoseCSV()">Télécharger CSV du Corps</button>
+      <button (click)="downloadFaceCSV()">Télécharger CSV du Visage</button>
+      <button (click)="downloadHandsCSV()">Télécharger CSV des Mains</button>
+      <button (click)="downloadAllCSV()">Télécharger Tout CSV</button>
+      <button (click)="createVideoFromData()">Créer Vidéo</button>
+    </div>
+  </div>
+  
+  <div *ngIf="errorMessage" class="error">
+    <p>{{ errorMessage }}</p>
+  </div>
+</div>

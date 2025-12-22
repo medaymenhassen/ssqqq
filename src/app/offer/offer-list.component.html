@@ -1,0 +1,47 @@
+<div class="offer-list-container">
+  <div class="header">
+    <h2>Available Offers</h2>
+    <button class="btn btn-primary" (click)="createOffer()">Create New Offer</button>
+  </div>
+  
+  <div *ngIf="loading" class="loading">
+    Loading offers...
+  </div>
+  
+  <div *ngIf="error" class="error">
+    {{ error }}
+  </div>
+  
+  <div *ngIf="!loading && offers.length === 0" class="no-offers">
+    No offers available at the moment.
+  </div>
+  
+  <div class="offers-grid" *ngIf="!loading && offers.length > 0">
+    <div class="offer-card" *ngFor="let offer of offers">
+      <h3>{{ offer.title }}</h3>
+      <p class="offer-description">{{ offer.description }}</p>
+      <div class="offer-details">
+        <p><strong>Price:</strong> ${{ offer.price }}</p>
+        <p><strong>Duration:</strong> {{ offer.durationHours }} hours</p>
+      </div>
+      <div class="offer-actions">
+        <button 
+          class="btn btn-secondary" 
+          (click)="editOffer(offer.id)">
+          Edit
+        </button>
+        <button 
+          class="btn btn-danger" 
+          (click)="deleteOffer(offer.id)">
+          Delete
+        </button>
+        <button 
+          class="purchase-btn" 
+          (click)="purchaseOffer(offer.id)"
+          [disabled]="isPurchasing">
+          {{ isPurchasing ? 'Processing...' : 'Purchase' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
