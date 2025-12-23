@@ -52,7 +52,7 @@ public class DocumentService {
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
-                System.out.println("Upload directory created: " + uploadPath.toAbsolutePath());
+
             }
         } catch (IOException e) {
             System.err.println("Failed to create upload directory: " + e.getMessage());
@@ -135,42 +135,32 @@ public class DocumentService {
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
         // Get current authenticated user
-        System.out.println("Getting current authenticated user for document upload");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("Authentication object: " + authentication);
         User currentUser = null;
         if (authentication != null) {
-            System.out.println("Principal class: " + authentication.getPrincipal().getClass().getName());
-            System.out.println("Principal toString: " + authentication.getPrincipal().toString());
             
             if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.User) {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
-                System.out.println("Current username (User): " + username);
                 Optional<User> userOpt = userRepository.findByEmail(username);
-                System.out.println("User lookup result: " + userOpt.isPresent());
                 if (userOpt.isPresent()) {
                     currentUser = userOpt.get();
-                    System.out.println("Found user: " + currentUser.getEmail());
                 } else {
-                    System.out.println("User not found for email: " + username);
+                    // User not found for email
                 }
             } else if (authentication.getPrincipal() instanceof String) {
                 // Sometimes the principal is just the username/email as a string
                 String username = (String) authentication.getPrincipal();
-                System.out.println("Current username (String): " + username);
                 Optional<User> userOpt = userRepository.findByEmail(username);
-                System.out.println("User lookup result: " + userOpt.isPresent());
                 if (userOpt.isPresent()) {
                     currentUser = userOpt.get();
-                    System.out.println("Found user: " + currentUser.getEmail());
                 } else {
-                    System.out.println("User not found for email: " + username);
+                    // User not found for email
                 }
             } else {
-                System.out.println("Unknown principal type: " + authentication.getPrincipal().getClass().getName());
+                // Unknown principal type
             }
         } else {
-            System.out.println("No authentication found");
+            // No authentication found
         }
         
         // Create document record
@@ -182,19 +172,15 @@ public class DocumentService {
         document.setTestAnswer(testAnswer);
         // Set the current user if available
         if (currentUser != null) {
-            System.out.println("Setting current user for document: " + currentUser.getEmail());
             document.setUser(currentUser);
         } else {
             // Fallback: try to get any user
-            System.out.println("No current user found, trying to find any user");
             List<User> allUsers = userRepository.findAll();
             if (!allUsers.isEmpty()) {
                 User fallbackUser = allUsers.get(0); // Use the first user
-                System.out.println("Using first available user as fallback: " + fallbackUser.getEmail());
                 document.setUser(fallbackUser);
             } else {
                 // This should never happen in a real application
-                System.out.println("No users found in database!");
                 throw new RuntimeException("No users available to associate with document");
             }
         }
@@ -221,8 +207,7 @@ public class DocumentService {
             Path filePath = Paths.get(document.getFilePath());
             Files.deleteIfExists(filePath);
         } catch (IOException e) {
-            // Log error but continue with database deletion
-            e.printStackTrace();
+            // Continue with database deletion
         }
         
         documentRepository.deleteById(documentId);

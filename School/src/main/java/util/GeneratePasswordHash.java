@@ -8,20 +8,21 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
  */
 public class GeneratePasswordHash {
     public static void main(String[] args) {
+        System.out.println(generateHash());
+    }
+    
+    public static String generateHash() {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         String password = "password123";
         
         // Générer un nouveau hash
         String hash = encoder.encode(password);
-        System.out.println("==========================================");
-        System.out.println("Nouveau hash BCrypt pour 'password123':");
-        System.out.println(hash);
-        System.out.println("==========================================");
         
         // Vérifier que le hash fonctionne
         boolean matches = encoder.matches(password, hash);
-        System.out.println("Vérification: " + (matches ? "✓ OK" : "✗ ERREUR"));
-        System.out.println("==========================================");
+        
+        // Output hash for use in scripts
+        return hash;
     }
 }
 

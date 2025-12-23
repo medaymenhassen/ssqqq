@@ -8,14 +8,22 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.time.LocalDateTime;
 import java.util.*;
+import javax.imageio.ImageIO;
 
 import com.auth.model.User;
 import com.auth.service.UserService;
+
+
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 
 @RestController
 @RequestMapping("/springboot/csv")
@@ -33,6 +41,7 @@ public class CsvVideoController {
             @RequestParam(required = false) Long userId,
             @RequestParam String videoName) {
         try {
+            // 1) Validation
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body("File is required");
             }
@@ -52,33 +61,33 @@ public class CsvVideoController {
                 return ResponseEntity.badRequest().body("User ID is required");
             }
 
+            // 2) Préparer dossier uploads
             File uploadDir = new File(UPLOAD_DIR);
             if (!uploadDir.exists()) {
                 uploadDir.mkdirs();
             }
 
+            // 3) Sauver le CSV brut
             String csvContent = new String(file.getBytes());
             String csvFileName = UUID.randomUUID().toString() + ".csv";
             Path csvFilePath = Paths.get(UPLOAD_DIR, csvFileName);
             Files.write(csvFilePath, csvContent.getBytes());
 
+            // 4) Préparer chemin vidéo
             String videoFileName = videoName.endsWith(".mp4") ? videoName : videoName + ".mp4";
             Path videoPath = Paths.get(UPLOAD_DIR, videoFileName);
-
-            System.out.println("🎬 Generating MP4 video (PURE JAVA - NO FFMPEG)...");
             generateMP4Video(videoPath, csvContent);
 
             if (!Files.exists(videoPath)) {
-                throw new Exception("Failed to create video file");
+                throw new Exception("Video file was not created");
             }
-            
+
             long fileSize = Files.size(videoPath);
-            if (fileSize < 5000) {
+            if (fileSize < 10_000) {
                 throw new Exception("Video file too small (" + fileSize + " bytes)");
             }
-            
-            System.out.println("✅ MP4 created: " + fileSize + " bytes");
 
+            // 5) Réponse
             Map<String, Object> response = new HashMap<>();
             response.put("status", "success");
             response.put("message", "Video created successfully");
@@ -86,22 +95,19 @@ public class CsvVideoController {
             response.put("csvProcessed", csvFileName);
             response.put("userId", userId);
             response.put("fileSize", fileSize);
-            response.put("processedRows", csvContent.split("\n").length - 1);
-            response.put("processingTimestamp", java.time.LocalDateTime.now());
+            response.put("processedRows", Math.max(0, csvContent.split("\n").length - 1));
+            response.put("processingTimestamp", LocalDateTime.now());
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("❌ ERROR: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error: " + e.getMessage());
         }
     }
-
+    
     /**
-     * ✅ GÉNÈRE UN MP4 VALIDE - 100% JAVA PUR
-     * Utilise UNIQUEMENT les libs standard Java
+     * Generates an MP4 from CSV data using pure Java implementation
      */
     private void generateMP4Video(Path outputPath, String csvContent) throws Exception {
         FileOutputStream fos = new FileOutputStream(outputPath.toFile());
@@ -115,7 +121,7 @@ public class CsvVideoController {
             ftypDos.writeInt(512);
             ftypDos.writeBytes("isomiso2avc1mp41");
             writeBox(dos, "ftyp", ftypContent.toByteArray());
-            System.out.println("✅ FTYP written");
+
 
             // === 2. MDAT BOX - Contient les frames vidéo ===
             ByteArrayOutputStream mdatContent = new ByteArrayOutputStream();
@@ -135,7 +141,7 @@ public class CsvVideoController {
                 }
             }
             writeBox(dos, "mdat", mdatContent.toByteArray());
-            System.out.println("✅ MDAT written: " + mdatContent.size() + " bytes");
+
 
             // === 3. MOOV BOX - Métadonnées ===
             ByteArrayOutputStream moovContent = new ByteArrayOutputStream();
@@ -147,16 +153,46 @@ public class CsvVideoController {
             moovDos.write(createTrak());
 
             writeBox(dos, "moov", moovContent.toByteArray());
-            System.out.println("✅ MOOV written");
+
 
         } finally {
             dos.close();
             fos.close();
         }
 
-        System.out.println("✅ Valid MP4 file created!");
-    }
 
+    }
+    
+    /**
+     * Rend une frame simple avec fond uni + texte (index + contenu CSV).
+     */
+    private BufferedImage renderFrame(int width, int height, int index, String csvRow) {
+        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+        Graphics2D g = img.createGraphics();
+        try {
+            // Fond
+            g.setColor(new Color(30, 30, 30));
+            g.fillRect(0, 0, width, height);
+
+            // Texte principal
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("SansSerif", Font.BOLD, 36));
+            g.drawString("Frame " + index, 50, 80);
+
+            // Sous-texte : contenu CSV tronqué
+            g.setFont(new Font("SansSerif", Font.PLAIN, 24));
+            String trimmed = csvRow;
+            if (trimmed.length() > 80) {
+                trimmed = trimmed.substring(0, 77) + "...";
+            }
+            g.drawString(trimmed, 50, 140);
+
+        } finally {
+            g.dispose();
+        }
+        return img;
+    }
+    
     private byte[] createMvhd() throws IOException {
         ByteArrayOutputStream content = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(content);

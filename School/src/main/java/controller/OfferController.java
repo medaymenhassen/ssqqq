@@ -35,32 +35,14 @@ public class OfferController {
     // Create a new offer (public - no authentication required)
     @PostMapping
     public Offer createOffer(@RequestBody Offer offer) {
-        System.out.println("📥 [OFFER CREATION] RECEIVED from frontend:");
-        System.out.println("   Full Offer: " + offer);
-        System.out.println("   Expected fields from Offer model:");
-        System.out.println("   - id: Long (will be set by backend)");
-        System.out.println("   - title: String (required)");
-        System.out.println("   - description: String (optional)");
-        System.out.println("   - price: BigDecimal (required)");
-        System.out.println("   - durationHours: Integer (required)");
-        System.out.println("   - userTypeId: Long (foreign key to UserType, optional)");
-        System.out.println("   - isActive: Boolean (required, default true)");
-        System.out.println("   - createdAt: LocalDateTime (set by backend)");
-        System.out.println("   - updatedAt: LocalDateTime (set by backend)");
-        System.out.println("\n   Received values:");
-        System.out.println("   - title: '" + offer.getTitle() + "' (type: " + (offer.getTitle() != null ? offer.getTitle().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - description: '" + offer.getDescription() + "' (type: " + (offer.getDescription() != null ? offer.getDescription().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - price: " + offer.getPrice() + " (type: " + (offer.getPrice() != null ? offer.getPrice().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - durationHours: " + offer.getDurationHours() + " (type: " + (offer.getDurationHours() != null ? offer.getDurationHours().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - userTypeId: " + offer.getUserTypeId() + " (type: " + (offer.getUserTypeId() != null ? offer.getUserTypeId().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - isActive: " + offer.getIsActive() + " (type: " + (offer.getIsActive() != null ? offer.getIsActive().getClass().getSimpleName() : "null") + ")");
+
         
         return offerService.createOffer(offer);
     }
     
-    // Update an offer (admin only)
+    // Update an offer (authenticated users only - temporary)
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Offer> updateOffer(@PathVariable Long id, @RequestBody Offer offerDetails) {
         try {
             Offer updatedOffer = offerService.updateOffer(id, offerDetails);
@@ -70,9 +52,9 @@ public class OfferController {
         }
     }
     
-    // Delete an offer (admin only)
+    // Delete an offer (authenticated users only - temporary)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteOffer(@PathVariable Long id) {
         try {
             offerService.deleteOffer(id);

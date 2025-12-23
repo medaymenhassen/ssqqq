@@ -44,8 +44,6 @@ public class VideoGeneratorUtil {
                 fos.write(0x00);
             }
         }
-        
-        System.out.println("✅ Valid MP4 header created: " + outputPath);
     }
 
 

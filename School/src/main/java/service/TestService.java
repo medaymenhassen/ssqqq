@@ -171,34 +171,25 @@ public class TestService {
     }
 
     public TestQuestionDTO createTestQuestionFromDTO(TestQuestionDTO testQuestionDTO) {
-        System.out.println("🎯 SERVICE: Processing TestQuestionDTO creation");
-        System.out.println("   DTO Question Text: " + testQuestionDTO.getQuestionText());
-        System.out.println("   DTO Course Test ID: " + testQuestionDTO.getCourseTestId());
-        System.out.println("   DTO User ID: " + testQuestionDTO.getUserId());
+
         
         TestQuestion testQuestion = testMapperService.toTestQuestionEntity(testQuestionDTO);
-        System.out.println("   Mapped Entity ID: " + testQuestion.getId());
         
         if (testQuestionDTO.getCourseTestId() != null) {
-            System.out.println("   Looking up CourseTest ID: " + testQuestionDTO.getCourseTestId());
             courseTestRepository.findById(testQuestionDTO.getCourseTestId())
                     .ifPresent(testQuestion::setCourseTest);
         }
         
         // Set the current user
         User currentUser = getCurrentUser();
-        System.out.println("   Current User from Security Context: " + (currentUser != null ? currentUser.getEmail() : "NULL"));
         if (currentUser != null) {
             testQuestion.setUser(currentUser);
-            System.out.println("   ✅ User set successfully");
         } else {
-            System.out.println("   ❌ No authenticated user found");
             // If no current user, throw an exception
             throw new RuntimeException("Cannot create test question without an authenticated user");
         }
         
         TestQuestion savedTestQuestion = testQuestionRepository.save(testQuestion);
-        System.out.println("   ✅ TestQuestion saved with ID: " + savedTestQuestion.getId());
         return testMapperService.toTestQuestionDTO(savedTestQuestion);
     }
 

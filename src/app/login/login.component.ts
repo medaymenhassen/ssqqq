@@ -27,23 +27,19 @@ export class LoginComponent {
   }
 
   onSubmit(): void {
-    console.log('🔐 [LoginComponent.onSubmit] Starting login process');
     if (this.loginForm.valid) {
       this.isLoading = true;
       this.errorMessage = '';
 
       const { email, password } = this.loginForm.value;
-      console.log('🔐 [LoginComponent.onSubmit] Form values:', { email, password: password ? '***' : '' });
 
       this.authService.login(email, password).subscribe({
         next: (response) => {
-          console.log('🔐 [LoginComponent.onSubmit] Login successful, navigating to bodyanalytics');
           this.isLoading = false;
           // Redirect to bodyanalytics page
           this.router.navigate(['/bodyanalytics']);
         },
         error: (error) => {
-          console.log('🔐 [LoginComponent.onSubmit] Login failed:', error);
           this.isLoading = false;
           this.errorMessage = error.error?.message || 'Erreur de connexion. Veuillez vérifier vos identifiants.';
         }

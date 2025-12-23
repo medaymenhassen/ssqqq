@@ -1,232 +1,138 @@
-<header class="header">
-  <div class="logo-container">
-    <img src="/logo.jpg" alt="Logo CognitiEx" class="logo">
-    <span class="logo-text">CognitiEx</span>
-  </div>
-  <nav class="navigation">
-    <a (click)="scrollToSection('vision')" class="nav-link">Vision</a>
-    <a (click)="scrollToSection('solution')" class="nav-link">Technologie</a>
-    <a (click)="scrollToSection('projects')" class="nav-link">Projets</a>
-    <a (click)="scrollToSection('data')" class="nav-link">Données</a>
-    
-    <!-- Conditional navigation based on authentication status -->
-    <ng-container *ngIf="!currentUser; else authenticatedNav">
-      <a (click)="navigateToLogin()" class="nav-link auth-link">Connexion</a>
-      <a (click)="navigateToRegister()" class="nav-link auth-link register-link">Inscription</a>
-    </ng-container>
-    
-    <ng-template #authenticatedNav>
-      <a (click)="logout()" class="nav-link auth-link">Déconnexion</a>
-    </ng-template>
-  </nav>
-</header>
-
-<section class="hero" id="vision">
-  <h1>Transformer les mouvements, le contenu et les données<br>en intelligence exploitable</h1>
-  <p>
-    CognitiEx conçoit des systèmes capables d’analyser le comportement humain,
-    les interactions et les contenus afin de créer des intelligences artificielles
-    appliquées au médical, à la robotisation et aux environnements 3D.
-  </p>
-  <div class="hero-buttons">
-    <button (click)="navigateToOffers()" class="primary-button">Explorer nos offres</button>
-    <button (click)="navigateToLessons()" class="secondary-button">Découvrir nos leçons</button>
-  </div>
-</section>
-
-<section class="problem">
-  <h2>Le problème actuel</h2>
-  <p>
-    La majorité des contenus numériques sont statiques.
-    Ils ne s’adaptent ni au comportement réel des utilisateurs,
-    ni à leurs mouvements, ni à leur manière d’interagir avec les systèmes.
-  </p>
-  <div class="problem-stats">
-    <div class="stat-card">
-      <h3>87%</h3>
-      <p>des contenus numériques sont statiques</p>
+<div class="home-page">
+  <!-- Header Section -->
+  <header class="header">
+    <div class="container">
+      <h1 class="main-title">Cognitiex</h1>
+      <p class="subtitle">L'intelligence artificielle pour apprendre</p>
+      <p class="tagline">Le futur de l'éducation est ici</p>
     </div>
-    <div class="stat-card">
-      <h3>64%</h3>
-      <p>d'utilisateurs insatisfaits par l'expérience</p>
-    </div>
-    <div class="stat-card">
-      <h3>42%</h3>
-      <p>de performance perdue à cause de l'inadaptation</p>
-    </div>
-  </div>
-</section>
+  </header>
 
-<section class="solution" id="solution">
-  <h2>La solution CognitiEx</h2>
-  <p>
-    Nous analysons les mouvements, les parcours, le temps de connexion
-    et les interactions afin de créer des modèles intelligents capables
-    d’apprendre, d’anticiper et d’optimiser les systèmes en continu.
-  </p>
-
-  <div class="features">
-    <div class="feature">
-      <div class="feature-icon">🧠</div>
-      <h3>Analyse comportementale</h3>
-      <p>Suivi et analyse des mouvements et interactions en temps réel</p>
+  <!-- Why Cognitiex Exists -->
+  <section class="why-section">
+    <div class="container">
+      <h2 class="section-title">Pourquoi Cognitiex existe</h2>
+      <p class="section-text">Apprendre est souvent difficile.</p>
+      <p class="section-text">Les cours sont souvent les mêmes pour tout le monde.</p>
+      <p class="section-text">Cognitiex change ça avec l'intelligence artificielle.</p>
     </div>
-    <div class="feature">
-      <div class="feature-icon">🤖</div>
-      <h3>Apprentissage automatique</h3>
-      <p>Modèles IA qui s'améliorent continuellement</p>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🔄</div>
-      <h3>Systèmes adaptatifs</h3>
-      <p>Contenus et interfaces qui s'ajustent automatiquement</p>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section class="projects" id="projects">
-  <h2>Domaines d’application</h2>
-
-  <div class="project-grid">
-    <div class="project-card">
-      <div class="project-icon">🏥</div>
-      <h3>IA Médicale</h3>
-      <p>
-        Analyse des mouvements, signaux et comportements
-        pour assister le diagnostic, la rééducation
-        et l’optimisation des protocoles médicaux.
-      </p>
-    </div>
-
-    <div class="project-card">
-      <div class="project-icon">🦾</div>
-      <h3>Robotisation</h3>
-      <p>
-        Développement de systèmes autonomes capables
-        d’apprendre à partir des interactions humaines
-        et de s’adapter à des environnements complexes.
-      </p>
-    </div>
-
-    <div class="project-card">
-      <div class="project-icon">🎮</div>
-      <h3>Jeux 3D & Environnements immersifs</h3>
-      <p>
-        Exploitation des données de mouvement et de comportement
-        pour créer des expériences intelligentes,
-        évolutives et personnalisées.
-      </p>
-    </div>
-  </div>
-</section>
-
-<section class="offers">
-  <h2>Nos Offres</h2>
-  <div *ngIf="loadingOffers" class="loading">Chargement des offres...</div>
-  <div *ngIf="!loadingOffers && offers.length === 0" class="no-offers">Aucune offre disponible pour le moment.</div>
-  
-  <div class="project-grid" *ngIf="!loadingOffers && offers.length > 0">
-    <div class="project-card" *ngFor="let offer of offers">
-      <h3>{{ offer.title }}</h3>
-      <p>{{ offer.description }}</p>
-      <div class="offer-price">
-        <span class="price">${{ offer.price }}</span>
-        <span class="duration">{{ offer.durationHours }} heures</span>
+  <!-- How Cognitiex Works -->
+  <section class="how-section">
+    <div class="container">
+      <h2 class="section-title">Comment fonctionne Cognitiex</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>L'utilisateur apprend</h3>
+          <p>Chaque personne apprend à son rythme.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>L'utilisateur interagit</h3>
+          <p>Les cours s'adaptent à chaque personne.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>L'intelligence artificielle observe</h3>
+          <p>L'IA comprend comment vous apprenez.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <h3>Les données aident à améliorer</h3>
+          <p>Nos cours deviennent plus efficaces.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">5</div>
+          <h3>L'apprentissage devient meilleur</h3>
+          <p>Plus vous utilisez Cognitiex, plus c'est efficace.</p>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <div class="actions">
-    <button (click)="navigateToOffers()" class="primary-button">Voir toutes les offres</button>
-  </div>
-</section>
+  </section>
 
-<section class="lessons">
-  <h2>Nos Leçons</h2>
-  <div *ngIf="loadingLessons" class="loading">Chargement des leçons...</div>
-  <div *ngIf="!loadingLessons && lessons.length === 0" class="no-lessons">Aucune leçon disponible pour le moment.</div>
-  
-  <div class="project-grid" *ngIf="!loadingLessons && lessons.length > 0">
-    <div class="project-card" *ngFor="let lesson of lessons">
-      <h3>{{ lesson.title }}</h3>
-      <p>{{ lesson.description }}</p>
-      <div class="lesson-meta">
-        <span class="order">Leçon #{{ lesson.lessonOrder }}</span>
+  <!-- Who Cognitiex Helps -->
+  <section class="who-section">
+    <div class="container">
+      <h2 class="section-title">Pour qui c'est fait</h2>
+      <div class="who-grid">
+        <div class="who-card">
+          <h3>Personnes seules</h3>
+          <p>Cognitiex vous aide à apprendre efficacement, seul.</p>
+        </div>
+        <div class="who-card">
+          <h3>Freelances</h3>
+          <p>Améliorez vos compétences pour mieux travailler.</p>
+        </div>
+        <div class="who-card">
+          <h3>Entreprises</h3>
+          <p>Formez vos employés avec des outils intelligents.</p>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <div class="actions">
-    <button (click)="navigateToLessons()" class="primary-button">Voir toutes les leçons</button>
-  </div>
-</section>
+  </section>
 
-<!-- Learning Dashboard -->
-<section class="learning-dashboard-section">
-  <h2>Votre Parcours d'Apprentissage</h2>
-  <app-learning-dashboard></app-learning-dashboard>
-</section>
-
-<section class="data" id="data">
-  <h2>Pourquoi la donnée est centrale</h2>
-  <p>
-    La récolte continue de données permet d’améliorer le contenu,
-    d’optimiser les modèles d’IA et de rendre les systèmes plus pertinents
-    à chaque interaction.
-  </p>
-
-  <ul>
-    <li>Amélioration continue des algorithmes</li>
-    <li>Contenus adaptatifs en temps réel</li>
-    <li>Réduction des erreurs et des biais</li>
-    <li>Meilleure prise de décision</li>
-  </ul>
-</section>
-
-<section class="cta">
-  <h2>Construisons l’intelligence de demain</h2>
-  <p>
-    CognitiEx développe des systèmes basés sur la science,
-    la donnée et la compréhension réelle du comportement humain.
-  </p>
-  <button (click)="contactUs()" class="cta-button">Nous contacter</button>
-</section>
-
-<footer class="footer">
-  <div class="footer-content">
-    <div class="footer-logo">
-      <img src="/logo.jpg" alt="Logo CognitiEx" class="footer-logo-img">
-      <span class="footer-logo-text">CognitiEx</span>
-    </div>
-    
-    <div class="footer-links">
-      <div class="footer-column">
-        <h4>Navigation</h4>
-        <a (click)="scrollToSection('vision')">Vision</a>
-        <a (click)="scrollToSection('solution')">Technologie</a>
-        <a (click)="scrollToSection('projects')">Projets</a>
-        <a (click)="scrollToSection('data')">Données</a>
-      </div>
-      
-      <div class="footer-column">
-        <h4>Ressources</h4>
-        <a (click)="navigateToOffers()">Offres</a>
-        <a (click)="navigateToLessons()">Leçons</a>
-        <a href="#">Documentation</a>
-        <a href="#">Blog</a>
-      </div>
-      
-      <div class="footer-column">
-        <h4>Contact</h4>
-        <a (click)="callPhone()">📞 +509 52920971</a>
-        <a (click)="openWhatsApp()">💬 WhatsApp: +509 52481433</a>
-        <a (click)="openFacebook()">📘 Facebook</a>
-        <a (click)="openLinkedIn()">👔 LinkedIn</a>
+  <!-- Offers Section -->
+  <section class="offers-section">
+    <div class="container">
+      <h2 class="section-title">Nos Offres</h2>
+      <div class="offers-list">
+        <div *ngIf="offers.length === 0" class="no-data-message">
+          <p>Aucune offre disponible actuellement.</p>
+        </div>
+        <div class="offer-item" *ngFor="let offer of offers">
+          <div class="offer-header">
+            <h3>{{ offer.title }}</h3>
+            <span class="price">€{{ offer.price }} / {{ offer.durationHours }} heures</span>
+          </div>
+          <p class="offer-description">{{ offer.description }}</p>
+          <div class="offer-details">
+            <span class="offer-type">Offre</span>
+            <button class="buy-btn" (click)="purchaseOffer(offer.id)">Acheter</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <div class="footer-bottom">
-    <p>© 2025 CognitiEx — Intelligence & Data. Tous droits réservés.</p>
-  </div>
-</footer>
+  </section>
+
+  <!-- Lessons Section -->
+  <section class="lessons-section">
+    <div class="container">
+      <h2 class="section-title">Nos Leçons</h2>
+      <div class="lessons-list">
+        <div *ngIf="lessons.length === 0" class="no-data-message">
+          <p>Aucune leçon disponible actuellement.</p>
+        </div>
+        <div class="lesson-item" *ngFor="let lesson of lessons">
+          <div class="lesson-header">
+            <h3>{{ lesson.title }}</h3>
+            <span class="lesson-duration">Leçon</span>
+          </div>
+          <p class="lesson-description">{{ lesson.description }}</p>
+          <div class="lesson-details">
+            <span class="lesson-category">Leçon</span>
+            <button class="start-btn" (click)="startLesson(lesson.id)">Commencer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The Future -->
+  <section class="future-section">
+    <div class="container">
+      <h2 class="section-title">Le futur</h2>
+      <p class="section-text">Cognitiex veut devenir leader mondial.</p>
+      <p class="section-text">Cognitiex crée des intelligences artificielles de plus en plus fortes.</p>
+      <p class="section-text">Le futur de l'éducation est intelligent.</p>
+    </div>
+  </section>
+
+  <!-- Final Button -->
+  <section class="cta-section">
+    <div class="container">
+      <button class="start-btn-main" (click)="startJourney()">Commencer doucement</button>
+    </div>
+  </section>
+</div>

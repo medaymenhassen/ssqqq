@@ -64,36 +64,26 @@ public class DocumentController {
     public ResponseEntity<?> uploadDocumentForTestAnswer(
             @RequestParam(name = "testAnswerId", required = false) Long testAnswerId,
             @RequestParam(name = "file", required = false) MultipartFile file) {
-        System.out.println("=== Document Upload Endpoint Hit ===");
-        System.out.println("Received document upload request for testAnswerId: " + testAnswerId + ", file: " + (file != null ? file.getOriginalFilename() : "null"));
-        System.out.println("File size: " + (file != null ? file.getSize() : "null"));
-        System.out.println("Content type: " + (file != null ? file.getContentType() : "null"));
+
         
         try {
             // Validate parameters
             if (testAnswerId == null) {
-                System.out.println("testAnswerId is null");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("testAnswerId is required");
             }
             
             if (file == null || file.isEmpty()) {
-                System.out.println("File is null or empty");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("File is required");
             }
             
             Document document = documentService.uploadDocumentForTestAnswer(testAnswerId, file);
-            System.out.println("Document uploaded successfully: " + document.getFileName());
             return ResponseEntity.ok(document);
         } catch (IOException e) {
-            System.out.println("IO Exception during document upload: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to upload document: " + e.getMessage());
         } catch (Exception e) {
-            System.out.println("Exception during document upload: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error: " + e.getMessage());
         }
@@ -198,7 +188,6 @@ public class DocumentController {
             File file = new File(document.getFilePath());
             
             if (!file.exists()) {
-                System.out.println("❌ File not found: " + document.getFilePath());
                 return ResponseEntity.notFound().build();
             }
             
@@ -217,7 +206,6 @@ public class DocumentController {
                 .body(fileBytes);
                 
         } catch (IOException e) {
-            System.out.println("❌ Error downloading document: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -273,7 +261,7 @@ public class DocumentController {
             }
             
         } catch (IOException e) {
-            System.err.println("❌ Error streaming document: " + e.getMessage());
+
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }

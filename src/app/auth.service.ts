@@ -169,12 +169,6 @@ export class AuthService {
             delay: 500 // ✅ Wait 500ms before retry
           }),
           catchError((error: any) => {
-            console.warn('[LoadCurrentUser] Error occurred:', {
-              status: error.status,
-              name: error.name,
-              message: error.message,
-              retryCount
-            });
 
             // ✅ IF 401/403 → Try refresh token first
             if (error.status === 401 || error.status === 403) {
@@ -219,6 +213,7 @@ export class AuthService {
         });
 
     } catch (error) {
+      // Token decoding failed, likely invalid token
     }
   }
 
@@ -251,7 +246,7 @@ export class AuthService {
       const decoded = atob(parts[1]);
       return JSON.parse(decoded);
     } catch (error) {
-      console.error('Error decoding token:', error);
+      // Token decoding failed
       throw error;
     }
   }
@@ -397,6 +392,7 @@ export class AuthService {
         try {
           const payload = this.decodeToken(accessToken);
         } catch (e) {
+          // Token decoding failed
         }
       }
 

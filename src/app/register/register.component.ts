@@ -34,11 +34,13 @@ export class RegisterComponent implements OnInit, OnDestroy {
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
-    public router: Router
+    public router: Router,
+    private userTypeService: UserTypeService
   ) {}
 
   ngOnInit(): void {
     this.initializeForm();
+    this.loadUserTypes();
     
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/dashboard']);
@@ -60,7 +62,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
       rgpdAccepted: [false, Validators.requiredTrue],
       ccpaAccepted: [false],
       commercialUseConsent: [false, Validators.requiredTrue],
-      userTypeId: ['']
+      userTypeId: [null]
     }, { 
       validators: this.passwordMatchValidator 
     });
@@ -82,13 +84,11 @@ export class RegisterComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
-    console.log('🔐 [RegisterComponent.onSubmit] Starting registration process');
     this.submitted = true;
     this.errorMessage = '';
     this.successMessage = '';
 
     if (this.registerForm.invalid) {
-      console.log('🔐 [RegisterComponent.onSubmit] Form is invalid, returning');
       return;
     }
 
@@ -96,15 +96,6 @@ export class RegisterComponent implements OnInit, OnDestroy {
     this.isLoading = true;
 
     const formData = this.registerForm.value;
-    console.log('🔐 [RegisterComponent.onSubmit] Form data:', {
-      firstname: formData.firstname,
-      lastname: formData.lastname,
-      email: formData.email,
-      hasPassword: !!formData.password,
-      rgpdAccepted: formData.rgpdAccepted,
-      ccpaAccepted: formData.ccpaAccepted,
-      commercialUseConsent: formData.commercialUseConsent
-    });
     
     const registerRequest = {
       firstname: formData.firstname,
@@ -113,7 +104,8 @@ export class RegisterComponent implements OnInit, OnDestroy {
       password: formData.password,
       rgpdAccepted: formData.rgpdAccepted,
       ccpaAccepted: formData.ccpaAccepted,
-      commercialUseConsent: formData.commercialUseConsent
+      commercialUseConsent: formData.commercialUseConsent,
+      userTypeId: formData.userTypeId
     };
 
     this.authService.register(registerRequest)
@@ -122,22 +114,18 @@ export class RegisterComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (response) => {
-          console.log('🔐 [RegisterComponent.onSubmit] Registration successful, response:', response);
           
           this.successMessage = '✅ Registration successful! Redirecting...';
           this.loading = false;
 
           // ✅ Les tokens sont DÉJÀ stockés par auth.service.register()
           // ✅ Charger l'utilisateur immédiatement après la réponse
-          console.log('🔐 [RegisterComponent.onSubmit] About to load current user after registration');
           this.authService.loadCurrentUser();
           setTimeout(() => {
-            console.log('🔐 [RegisterComponent.onSubmit] Navigating to home after registration');
             this.router.navigate(['/']);
           }, 500);  // Délai court pour que le profil soit chargé
         }, 
         error: (error) => {
-          console.log('🔐 [RegisterComponent.onSubmit] Registration failed:', error);
           this.loading = false;
 
           if (error.error && typeof error.error === 'object') {
@@ -205,6 +193,17 @@ export class RegisterComponent implements OnInit, OnDestroy {
     }
     
     return password === confirmPassword;
+  }
+
+  loadUserTypes(): void {
+    this.userTypeService.getAllUserTypes().subscribe({
+      next: (userTypes) => {
+        this.userTypes = userTypes;
+      },
+      error: (error) => {
+        // Error loading user types
+      }
+    });
   }
 
   onUserTypeChange(event: any): void {

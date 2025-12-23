@@ -11,8 +11,14 @@ public class PasswordHashGenerator {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         String password = "password123";
         String hash = encoder.encode(password);
-        System.out.println("Mot de passe: " + password);
-        System.out.println("Hash BCrypt: " + hash);
+        // Return hash value for use in scripts
+        System.out.println(generateHash());
+    }
+    
+    public static String generateHash() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String password = "password123";
+        return encoder.encode(password);
     }
 }
 

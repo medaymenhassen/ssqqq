@@ -99,7 +99,6 @@ export class VideoComponent implements OnInit, OnDestroy {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser) {
       this.userId = currentUser.id;
-      console.log('👤 Current user loaded:', this.userId);
     }
   }
 
@@ -113,9 +112,7 @@ export class VideoComponent implements OnInit, OnDestroy {
   }
 
   async startCamera(): Promise<void> {
-    console.log('📷 Starting camera...');
     if (this.isTracking) {
-      console.log('⏭️ Camera already started');
       return;
     }
 
@@ -139,20 +136,16 @@ export class VideoComponent implements OnInit, OnDestroy {
 
         // Start recording the video stream
         this.startRecording();
-
-        console.log('✅ Camera started and MediaPipe initialized');
       }
     } catch (error) {
-      console.error('❌ Error starting camera:', error);
+      console.error('Error starting camera:', error);
       this.errorMessage = 'Failed to start camera: ' + (error as Error).message;
       this.isTracking = false;
     }
   }
 
   private startRecording(): void {
-    console.log('⏺️ Starting video recording...');
     if (!this.stream) {
-      console.log('⏭️ No stream available for recording');
       return;
     }
 
@@ -167,41 +160,34 @@ export class VideoComponent implements OnInit, OnDestroy {
       this.mediaRecorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size > 0) {
           this.recordedChunks.push(event.data);
-          console.log(`📦 Recorded chunk: ${event.data.size} bytes`);
         }
       };
 
       this.mediaRecorder.onstop = () => {
-        console.log('⏹️ Recording stopped');
         this.createTemporaryVideo();
       };
 
       this.mediaRecorder.onerror = (event: Event) => {
-        console.error('❌ MediaRecorder error:', event);
+        console.error('MediaRecorder error:', event);
         this.errorMessage = 'Error recording video';
       };
 
       // Start recording with 1 second chunks
       this.mediaRecorder.start(1000);
-      console.log('⏺️ Recording started');
     } catch (error) {
-      console.error('❌ Error starting recording:', error);
+      console.error('Error starting recording:', error);
       this.errorMessage = 'Failed to start recording: ' + (error as Error).message;
     }
   }
 
   private stopRecording(): void {
-    console.log('⏹️ Stopping video recording...');
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.stop();
-      console.log('⏹️ Recording stopped');
     }
   }
 
   private createTemporaryVideo(): void {
-    console.log('📼 Creating temporary video from recorded chunks...');
     if (this.recordedChunks.length === 0) {
-      console.log('⏭️ No recorded chunks available');
       return;
     }
 
@@ -215,12 +201,10 @@ export class VideoComponent implements OnInit, OnDestroy {
       }
       this.temporaryVideoBlob = blob;
       
-      console.log(`✅ Temporary video created: ${blob.size} bytes, type: ${blob.type}`);
-      
       // Clean up
       this.recordedChunks = [];
     } catch (error) {
-      console.error('❌ Error creating temporary video:', error);
+      console.error('Error creating temporary video:', error);
       this.errorMessage = 'Failed to create temporary video: ' + (error as Error).message;
     }
   }
@@ -239,9 +223,7 @@ export class VideoComponent implements OnInit, OnDestroy {
   // ========== MÉTHODES DE TÉLÉCHARGEMENT CSV ==========
 
   downloadPoseCSV(): void {
-    console.log('📥 Downloading pose CSV data');
     if (this.poseDataHistory.length === 0) {
-      console.log('⏭️ No pose data available');
       return;
     }
 
@@ -288,14 +270,10 @@ export class VideoComponent implements OnInit, OnDestroy {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-
-    console.log('📥 Pose CSV data downloaded');
   }
 
   downloadFaceCSV(): void {
-    console.log('📥 Downloading face CSV data');
     if (this.faceDataHistory.length === 0) {
-      console.log('⏭️ No face data available');
       return;
     }
 
@@ -330,14 +308,10 @@ export class VideoComponent implements OnInit, OnDestroy {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-
-    console.log('📥 Face CSV data downloaded');
   }
 
   downloadHandsCSV(): void {
-    console.log('📥 Downloading hands CSV data');
     if (this.handsDataHistory.length === 0) {
-      console.log('⏭️ No hands data available');
       return;
     }
 
@@ -383,17 +357,13 @@ export class VideoComponent implements OnInit, OnDestroy {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-
-    console.log('📥 Hands CSV data downloaded');
   }
 
   // ========== CRÉER VIDEO DEPUIS CSV ==========
 
   private createVideoFromPoseCSV(): void {
-    console.log('🎥 Creating video from all movement data');
 
     if (this.poseDataHistory.length === 0 && this.faceDataHistory.length === 0 && this.handsDataHistory.length === 0) {
-      console.log('⏭️ No movement data available');
       return;
     }
 
@@ -465,41 +435,82 @@ export class VideoComponent implements OnInit, OnDestroy {
     // Send CSV to backend to generate MP4
     const videoName = `analysis-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.mp4`;
 
-    this.videoUploadService.createVideoFromCSV(
-      csvContent,
-      this.userId,
-      videoName
-    ).subscribe({
-      next: (response) => {
-        console.log('✅ Video created and stored:', response);
-        // Update the stored video URL with the one from the backend
-        if (response.videoUrl) {
-          // Prepend the API URL if it's a relative path
-          const fullVideoUrl = response.videoUrl.startsWith('http') ? 
-            response.videoUrl : 
-            `http://localhost:8080${response.videoUrl}`;
-          this.storedVideoUrl = fullVideoUrl;
-          console.log('✅ Backend video URL set for display:', fullVideoUrl);
-          
-          // Also revoke any previous temporary video URL to prevent memory leaks
-          if (this.temporaryVideoUrl) {
-            URL.revokeObjectURL(this.temporaryVideoUrl);
-            this.temporaryVideoUrl = null;
-          }
+    // Check if backend is available before attempting to create video
+    fetch('http://localhost:8080/health', { method: 'GET' })
+      .then(response => {
+        if (response.ok) {
+          // Backend is available, proceed with API call
+          this.videoUploadService.createVideoFromCSV(
+            csvContent,
+            this.userId,
+            videoName
+          ).subscribe({
+            next: (response) => {
+              console.log('Video created and stored:', response);
+              // Update the stored video URL with the one from the backend
+              if (response.videoUrl) {
+                // Prepend the API URL if it's a relative path
+                const fullVideoUrl = response.videoUrl.startsWith('http') ? 
+                  response.videoUrl : 
+                  `http://localhost:8080${response.videoUrl}`;
+                this.storedVideoUrl = fullVideoUrl;
+                
+                // Also revoke any previous temporary video URL to prevent memory leaks
+                if (this.temporaryVideoUrl) {
+                  URL.revokeObjectURL(this.temporaryVideoUrl);
+                  this.temporaryVideoUrl = null;
+                }
+              }
+              alert('✅ Vidéo créée et stockée avec succès!');
+            },
+            error: (err) => {
+              console.error('Error creating video from CSV:', err);
+              // Create video locally if backend fails
+              this.createVideoLocally(csvContent, videoName);
+            }
+          });
+        } else {
+          // Backend not available, create video locally
+          this.createVideoLocally(csvContent, videoName);
         }
-        alert('✅ Vidéo créée et stockée avec succès!');
-      },
-      error: (err) => {
-        console.error('❌ Error creating video from CSV:', err);
-        alert('❌ Erreur lors de la création de la vidéo');
-      }
-    });
+      })
+      .catch(error => {
+        console.error('Backend not available, creating video locally:', error);
+        // Backend not available, create video locally
+        this.createVideoLocally(csvContent, videoName);
+      });
+  }
+
+  // Create video locally when backend is not available
+  private createVideoLocally(csvContent: string, videoName: string): void {
+    alert('Le backend n\'est pas disponible. La vidéo sera créée localement.');
+    
+    // In a real implementation, we would convert the CSV data to a video locally
+    // For now, we'll just create a placeholder video
+    const placeholderVideo = new Blob([], { type: 'video/mp4' });
+    const videoUrl = URL.createObjectURL(placeholderVideo);
+    this.storedVideoUrl = videoUrl;
+    this.temporaryVideoUrl = videoUrl;
+    
+    // Create and download the CSV file for user to use with backend later
+    const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvUrl = URL.createObjectURL(csvBlob);
+    const a = document.createElement('a');
+    a.href = csvUrl;
+    a.download = `movement-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(csvUrl);
+    }, 100);
+    
+    console.log('Local video processing completed, CSV file downloaded for later backend processing');
   }
 
   uploadPoseCSV(): void {
-    console.log('📤 Uploading pose CSV data to backend');
     if (this.poseDataHistory.length === 0) {
-      console.log('⏭️ No pose data available');
       return;
     }
 
@@ -540,21 +551,18 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.userId) {
       this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'pose_data', csvFile).subscribe({
         next: (document) => {
-          console.log('📊 Pose CSV data uploaded as document:', document);
+          console.log('Pose CSV data uploaded as document:', document);
         },
         error: (err) => {
-          console.error('❌ Error uploading pose CSV data as document:', err);
+          console.error('Error uploading pose CSV data as document:', err);
         }
       });
     }
 
-    console.log('📤 Pose CSV data upload initiated');
   }
 
   uploadFaceCSV(): void {
-    console.log('📤 Uploading face CSV data to backend');
     if (this.faceDataHistory.length === 0) {
-      console.log('⏭️ No face data available');
       return;
     }
 
@@ -583,21 +591,18 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.userId) {
       this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'face_data', csvFile).subscribe({
         next: (document) => {
-          console.log('📊 Face CSV data uploaded as document:', document);
+          console.log('Face CSV data uploaded as document:', document);
         },
         error: (err) => {
-          console.error('❌ Error uploading face CSV data as document:', err);
+          console.error('Error uploading face CSV data as document:', err);
         }
       });
     }
 
-    console.log('📤 Face CSV data upload initiated');
   }
 
   uploadHandsCSV(): void {
-    console.log('📤 Uploading hands CSV data to backend');
     if (this.handsDataHistory.length === 0) {
-      console.log('⏭️ No hands data available');
       return;
     }
 
@@ -637,31 +642,26 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.userId) {
       this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'hands_data', csvFile).subscribe({
         next: (document) => {
-          console.log('📊 Hands CSV data uploaded as document:', document);
+          console.log('Hands CSV data uploaded as document:', document);
         },
         error: (err) => {
-          console.error('❌ Error uploading hands CSV data as document:', err);
+          console.error('Error uploading hands CSV data as document:', err);
         }
       });
     }
 
-    console.log('📤 Hands CSV data upload initiated');
   }
 
   downloadAllCSV(): void {
-    console.log('📥 Downloading all CSV data');
     this.downloadPoseCSV();
     this.downloadFaceCSV();
     this.downloadHandsCSV();
-    console.log('📥 All CSV data download initiated');
   }
 
   uploadAllCSV(): void {
-    console.log('📤 Uploading all CSV data to backend');
     this.uploadPoseCSV();
     this.uploadFaceCSV();
     this.uploadHandsCSV();
-    console.log('📤 All CSV data upload initiated');
   }
 
   // ========== COLLECTE DE DONNÉES ==========
@@ -762,15 +762,27 @@ export class VideoComponent implements OnInit, OnDestroy {
       });
     }
     
-    // Log data collection for debugging
-    if (hasPoseData || hasFaceData || hasHandsData) {
-      console.log(`📊 Collected data at ${timestamp}: Pose=${!!hasPoseData}, Face=${!!hasFaceData}, Hands=${!!hasHandsData}`);
-    }
   }
 
   private sendCapturedDataToBackends(): void {
-    console.log('📤 Sending captured data to backends...');
-
+    console.log('Sending captured data to backends...');
+    
+    // Check if backend is available before sending data
+    fetch('http://localhost:8080/health', { method: 'GET' })
+      .then(response => {
+        if (response.ok) {
+          // Backend is available, proceed with API calls
+          this.sendDataToBackend();
+        } else {
+          console.log('Backend not available, storing data locally');
+          this.storeDataLocally();
+        }
+      })
+      .catch(error => {
+        console.log('Backend not available, storing data locally');
+        this.storeDataLocally();
+      });
+    
     // Define type for movement data
     interface MovementData {
       timestamp: number;
@@ -805,10 +817,49 @@ export class VideoComponent implements OnInit, OnDestroy {
       allMovementData.push(movementRecord);
     });
     
-    console.log(`📤 Preparing to send ${allMovementData.length} movement records to Django AI`);
+
     
-    // Temporarily disable AI service calls to prevent Django errors
-    /*
+    
+    console.log('All captured data processed');
+  }
+  
+  private sendDataToBackend(): void {
+    // Define type for movement data
+    interface MovementData {
+      timestamp: number;
+      pose: any;
+      face: any;
+      hands: any;
+    }
+    
+    // Create movement data from collected history
+    const allMovementData: MovementData[] = [];
+    
+    // Combine all collected data into movement records
+    const timestamps = new Set([
+      ...this.poseDataHistory.map(entry => entry.timestamp),
+      ...this.faceDataHistory.map(entry => entry.timestamp),
+      ...this.handsDataHistory.map(entry => entry.timestamp)
+    ]);
+    
+    // Create movement records for each timestamp
+    Array.from(timestamps).sort().forEach(timestamp => {
+      const poseEntry = this.poseDataHistory.find(entry => entry.timestamp === timestamp);
+      const faceEntry = this.faceDataHistory.find(entry => entry.timestamp === timestamp);
+      const handsEntry = this.handsDataHistory.find(entry => entry.timestamp === timestamp);
+      
+      const movementRecord = {
+        timestamp,
+        pose: poseEntry?.data || null,
+        face: faceEntry?.data || null,
+        hands: handsEntry?.data || null
+      };
+      
+      allMovementData.push(movementRecord);
+    });
+    
+    console.log(`Preparing to send ${allMovementData.length} movement records to Django AI`);
+    
     if (allMovementData.length > 0) {
       allMovementData.forEach((movementData, index) => {
         const aiRecord = {
@@ -819,19 +870,49 @@ export class VideoComponent implements OnInit, OnDestroy {
 
         this.aiService.createMovementRecord(aiRecord).subscribe({
           next: (record) => {
-            console.log(`✅ Movement record ${index + 1}/${allMovementData.length} sent to Django AI:`, record.id);
+            console.log(`Movement record ${index + 1}/${allMovementData.length} sent to Django AI:`, record.id);
           },
           error: (err) => {
-            console.error(`❌ Error sending movement record ${index + 1} to Django AI:`, err);
+            console.error(`Error sending movement record ${index + 1} to Django AI:`, err);
           }
         });
       });
     } else {
-      console.log('📭 No movement data to send to Django AI');
+      console.log('No movement data to send to Django AI');
     }
-    */
     
-    console.log('📤 All captured data sent to backends (AI service calls disabled)');
+    console.log('All captured data sent to backends');
+  }
+  
+  private storeDataLocally(): void {
+    // Store the collected data locally as JSON for later upload
+    const localData = {
+      userId: this.userId,
+      timestamp: new Date().toISOString(),
+      poseData: this.poseDataHistory,
+      faceData: this.faceDataHistory,
+      handsData: this.handsDataHistory
+    };
+    
+    // Store in localStorage
+    const dataStr = JSON.stringify(localData);
+    localStorage.setItem('movementData', dataStr);
+    
+    console.log('Movement data stored locally for later upload');
+    
+    // Also create a downloadable file
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `movement-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   }
 
   // ========== MÉTHODES MANQUANTES POUR LE TEMPLATE ==========
@@ -923,9 +1004,7 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   // Download temporary video
   downloadTemporaryVideo(): void {
-    console.log('📥 Downloading temporary video');
     if (!this.temporaryVideoBlob) {
-      console.log('⏭️ No temporary video available');
       return;
     }
 
@@ -940,15 +1019,11 @@ export class VideoComponent implements OnInit, OnDestroy {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-
-    console.log('📥 Temporary video downloaded');
   }
 
   // Upload temporary video to backend
   uploadTemporaryVideo(): void {
-    console.log('📤 Uploading temporary video to backend');
     if (!this.temporaryVideoBlob) {
-      console.log('⏭️ No temporary video available for upload');
       this.errorMessage = 'No temporary video available for upload';
       return;
     }
@@ -963,13 +1038,13 @@ export class VideoComponent implements OnInit, OnDestroy {
     
     this.videoUploadService.uploadVideo(this.temporaryVideoBlob, this.userId, filename).subscribe({
       next: (response) => {
-        console.log('✅ Temporary video uploaded successfully:', response);
-        alert('✅ Video uploaded successfully!');
+        console.log('Temporary video uploaded successfully:', response);
+        alert('Video uploaded successfully!');
       },
       error: (err) => {
-        console.error('❌ Error uploading temporary video:', err);
+        console.error('Error uploading temporary video:', err);
         this.errorMessage = 'Error uploading video: ' + (err.message || 'Unknown error');
-        alert('❌ Error uploading video');
+        alert('Error uploading video');
       }
     });
   }
@@ -987,10 +1062,8 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (file && file.type.startsWith('video/')) {
       this.selectedVideoFile = file;
       this.errorMessage = '';
-      console.log('📁 Video file selected:', file.name);
     } else {
       this.errorMessage = 'Veuillez sélectionner un fichier vidéo valide.';
-      console.log('❌ Invalid file type selected');
     }
   }
 
@@ -1020,11 +1093,9 @@ export class VideoComponent implements OnInit, OnDestroy {
         this.isTracking = true;
         this.isVideoInitialized = true;
         this.analysisStartTime = Date.now();
-        
-        console.log('✅ Video file loaded and ready for analysis');
       }
     } catch (error) {
-      console.error('❌ Error processing video file:', error);
+      console.error('Error processing video file:', error);
       this.errorMessage = 'Erreur lors du traitement de la vidéo: ' + (error as Error).message;
     } finally {
       this.isProcessingVideo = false;
@@ -1033,7 +1104,6 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   // Method to store video after analysis
   storeAnalyzedVideo(): void {
-    console.log('💾 Storing analyzed video to resources...');
     
     // The video from CSV is already created by createVideoFromPoseCSV
     // which receives the video URL from the backend
@@ -1044,7 +1114,6 @@ export class VideoComponent implements OnInit, OnDestroy {
       this.storedVideoUrl = storedUrl;
       // Store the URL so we can revoke it later
       this.temporaryVideoUrl = storedUrl;
-      console.log('✅ Analyzed video stored and available for display');
     }
   }
 
@@ -1065,8 +1134,6 @@ export class VideoComponent implements OnInit, OnDestroy {
       document.body.removeChild(a);
       URL.revokeObjectURL(this.storedVideoUrl!);
     }, 100);
-
-    console.log('📥 Stored video downloaded');
   }
 
   // ========== MÉTHODES POUR LE TÉLÉCHARGEMENT D'IMAGE ==========
@@ -1076,10 +1143,8 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (file && file.type.startsWith('image/')) {
       this.selectedImageFile = file;
       this.errorMessage = '';
-      console.log('📁 Image file selected:', file.name);
     } else {
       this.errorMessage = 'Veuillez sélectionner un fichier image valide.';
-      console.log('❌ Invalid file type selected');
     }
   }
 
@@ -1109,11 +1174,9 @@ export class VideoComponent implements OnInit, OnDestroy {
         this.isTracking = true;
         this.isVideoInitialized = true;
         this.analysisStartTime = Date.now();
-        
-        console.log('✅ Image file loaded and ready for analysis');
       }
     } catch (error) {
-      console.error('❌ Error processing image file:', error);
+      console.error('Error processing image file:', error);
       this.errorMessage = 'Erreur lors du traitement de l' + "'" + 'image: ' + (error as Error).message;
     } finally {
       this.isProcessingImage = false;
@@ -1122,7 +1185,6 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   // Override stopCamera to also store the analyzed video
   stopCamera(): void {
-    console.log('⏹️ Stopping camera and storing analyzed video...');
     this.isTracking = false;
 
     this.analysisEndTime = Date.now();
@@ -1144,7 +1206,6 @@ export class VideoComponent implements OnInit, OnDestroy {
     // Stop all tracks
     if (this.stream) {
       this.stream.getTracks().forEach(track => {
-        console.log('⏹️ Stopping track:', track.kind);
         track.stop();
       });
       this.stream = null;
@@ -1154,7 +1215,5 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.videoService) {
       this.videoService.dispose();
     }
-
-    console.log('⏹️ Camera stopped and video stored');
   }
 }

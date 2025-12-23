@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background-color: #F3F4F6;
 }
 
 .login-card {
@@ -11,14 +11,21 @@
   max-width: 400px;
   padding: 2rem;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.login-card:hover {
+  transform: translateY(-2px);
 }
 
 .login-card h2 {
   text-align: center;
   margin-bottom: 1.5rem;
-  color: #333;
+  color: #0B1C2D;
+  font-size: 1.8rem;
+  font-weight: bold;
 }
 
 .login-form {
@@ -84,15 +91,23 @@
 }
 
 .btn-primary {
-  color: #fff;
-  background-color: #007bff;
-  border-color: #007bff;
+  color: white;
+  background-color: #22C55E;
+  border-color: #22C55E;
+  padding: 12px 24px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: background-color 0.3s;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  width: 100%;
 }
 
 .btn-primary:hover {
-  color: #fff;
-  background-color: #0069d9;
-  border-color: #0062cc;
+  background-color: darken(#22C55E, 10%);
 }
 
 .btn-primary:disabled {
@@ -144,4 +159,48 @@ a {
 a:hover {
   color: #0056b3;
   text-decoration: underline;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 10px;
+  }
+  
+  .login-card {
+    padding: 1.5rem;
+    margin: 0 10px;
+  }
+  
+  .login-card h2 {
+    font-size: 1.5rem;
+  }
+  
+  .btn-primary {
+    padding: 10px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 5px;
+  }
+  
+  .login-card {
+    padding: 1rem;
+    margin: 0 5px;
+  }
+  
+  .login-card h2 {
+    font-size: 1.3rem;
+  }
+  
+  .form-control {
+    padding: 8px 12px;
+  }
+  
+  .btn-primary {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
 }

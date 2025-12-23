@@ -49,9 +49,7 @@ public class JwtUtil {
 
     private Claims getAllClaimsFromToken(String token) {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-        Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-        System.out.println("JWT Util - All claims from token: " + claims);
-        return claims;
+        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
     }
 
     private Boolean isTokenExpired(String token) {
@@ -79,17 +77,12 @@ public class JwtUtil {
     public Boolean validateToken(String token, String username) {
         try {
             final String extractedUsername = getUsernameFromToken(token);
-            System.out.println("JWT Util - Validating token: extractedUsername='" + extractedUsername + "', expected='" + username + "'");
             
             boolean usernameMatch = extractedUsername != null && extractedUsername.equals(username);
             boolean notExpired = !isTokenExpired(token);
             
-            System.out.println("JWT Util - Validation result: usernameMatch=" + usernameMatch + ", notExpired=" + notExpired);
-            
             return usernameMatch && notExpired;
         } catch (Exception e) {
-            System.out.println("JWT Util - Error validating token: " + e.getMessage());
-            e.printStackTrace();
             return false;
         }
     }

@@ -15,20 +15,13 @@ public class JwtService {
     }
 
     public String getUsernameFromToken(String token) {
-        String username = jwtUtil.getUsernameFromToken(token);
-        System.out.println("JwtService - Username from token: '" + username + "'");
-        return username;
+        return jwtUtil.getUsernameFromToken(token);
     }
 
     public String getRoleFromToken(String token) {
         try {
-            String role = jwtUtil.getRoleFromToken(token);
-            System.out.println("JwtService - Role from token: '" + role + "'");
-            
-            return role;
+            return jwtUtil.getRoleFromToken(token);
         } catch (Exception e) {
-            System.out.println("JwtService - Error getting role from token: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }

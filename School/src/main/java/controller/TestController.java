@@ -56,8 +56,7 @@ public class TestController {
             List<TestQuestionDTO> questions = testService.getAllTestQuestionsWithDTO();
             return ResponseEntity.ok(questions);
         } catch (Exception e) {
-            // Log the error for debugging
-            e.printStackTrace();
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -75,28 +74,7 @@ public class TestController {
     @PostMapping("/questions")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public TestQuestionDTO createTestQuestion(@RequestBody TestQuestionDTO testQuestionDTO) {
-        System.out.println("📥 [TEST QUESTION CREATION] RECEIVED from frontend:");
-        System.out.println("   Full DTO: " + testQuestionDTO);
-        System.out.println("   Expected fields from TestQuestionDTO model:");
-        System.out.println("   - id: Long (will be set by backend)");
-        System.out.println("   - questionText: String (required)");
-        System.out.println("   - questionOrder: Integer (required)");
-        System.out.println("   - points: Integer (required)");
-        System.out.println("   - questionType: String (required, MCQ or OPEN_ENDED)");
-        System.out.println("   - createdAt: LocalDateTime (set by backend)");
-        System.out.println("   - updatedAt: LocalDateTime (set by backend)");
-        System.out.println("   - courseTestId: Long (foreign key to CourseTest)");
-        System.out.println("   - courseLessonId: Long (foreign key to CourseLesson)");
-        System.out.println("   - userId: Long (set by backend from auth)");
-        System.out.println("   - answers: List<TestAnswerDTO> (optional)");
-        System.out.println("\n   Received values:");
-        System.out.println("   - questionText: '" + testQuestionDTO.getQuestionText() + "' (type: " + (testQuestionDTO.getQuestionText() != null ? testQuestionDTO.getQuestionText().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - questionOrder: " + testQuestionDTO.getQuestionOrder() + " (type: " + (testQuestionDTO.getQuestionOrder() != null ? testQuestionDTO.getQuestionOrder().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - points: " + testQuestionDTO.getPoints() + " (type: " + (testQuestionDTO.getPoints() != null ? testQuestionDTO.getPoints().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - questionType: '" + testQuestionDTO.getQuestionType() + "' (type: " + (testQuestionDTO.getQuestionType() != null ? testQuestionDTO.getQuestionType().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - courseTestId: " + testQuestionDTO.getCourseTestId() + " (type: " + (testQuestionDTO.getCourseTestId() != null ? testQuestionDTO.getCourseTestId().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - courseLessonId: " + testQuestionDTO.getCourseLessonId() + " (type: " + (testQuestionDTO.getCourseLessonId() != null ? testQuestionDTO.getCourseLessonId().getClass().getSimpleName() : "null") + ")");
-        System.out.println("   - userId: " + testQuestionDTO.getUserId() + " (should be null, set by backend)");
+
         
         return testService.createTestQuestionFromDTO(testQuestionDTO);
     }

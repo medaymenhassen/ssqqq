@@ -15,3 +15,23 @@ export interface DataRecord {
   direction?: number;
   confidence?: number;
 }
+
+export interface Offer {
+  id?: number;
+  title: string;
+  description: string;
+  price: number;
+  durationHours: number;
+  userTypeId?: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Lesson {
+  id?: number;
+  title: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
