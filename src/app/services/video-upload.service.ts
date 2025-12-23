@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -10,6 +10,21 @@ export class VideoUploadService {
   private springBootUrl = environment.apiUrl.replace('/api', ''); // Spring Boot API URL
 
   constructor(private http: HttpClient) {}
+
+  // Get authorization headers
+  private getAuthHeaders(): HttpHeaders {
+    // Check if we're in browser context
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        return new HttpHeaders({
+          'Authorization': `Bearer ${token}`
+        });
+      }
+    }
+    // Return default headers if no token or in SSR context
+    return new HttpHeaders();
+  }
 
   /**
    * Create a video from CSV data
@@ -25,7 +40,9 @@ export class VideoUploadService {
     formData.append('userId', userId.toString());
     formData.append('videoName', videoName);
 
-    return this.http.post(`${this.springBootUrl}/springboot/csv/create-video`, formData);
+    return this.http.post(`${this.springBootUrl}/springboot/csv/create-video`, formData, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   /**
@@ -40,6 +57,8 @@ export class VideoUploadService {
     formData.append('file', videoBlob, filename);
     formData.append('userId', userId.toString());
 
-    return this.http.post(`${this.springBootUrl}/springboot/csv/upload-video`, formData);
+    return this.http.post(`${this.springBootUrl}/springboot/csv/upload-video`, formData, {
+      headers: this.getAuthHeaders()
+    });
   }
 }

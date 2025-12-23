@@ -19,6 +19,24 @@
 
   <div class="main-content">
     <section class="video-section">
+      <div class="video-upload-section" *ngIf="!isVideoInitialized">
+        <h3>📤 Charger une Vidéo</h3>
+        <input type="file" (change)="onVideoFileSelected($event)" accept="video/*" />
+        <button class="btn btn-primary" *ngIf="selectedVideoFile" (click)="processVideoFile()" [disabled]="isProcessingVideo">
+          {{ isProcessingVideo ? 'Traitement en cours...' : 'Analyser la Vidéo' }}
+        </button>
+        <p class="upload-info">Ou utilisez la webcam ci-dessous</p>
+      </div>
+      
+      <div class="image-upload-section" *ngIf="!isVideoInitialized">
+        <h3>🖼️ Charger une Image</h3>
+        <input type="file" (change)="onImageFileSelected($event)" accept="image/*" />
+        <button class="btn btn-primary" *ngIf="selectedImageFile" (click)="processImageFile()" [disabled]="isProcessingImage">
+          {{ isProcessingImage ? 'Traitement en cours...' : 'Analyser l\'Image' }}
+        </button>
+        <p class="upload-info">Ou utilisez la webcam ci-dessus</p>
+      </div>
+      
       <div class="video-wrapper">
         <video #videoElement class="video-stream" playsinline (play)="isVideoInitialized = true"></video>
         <div class="fps-indicator" *ngIf="isTracking">
@@ -31,8 +49,8 @@
       </div>
 
       <div class="video-controls">
-        <button class="btn btn-primary" *ngIf="!isVideoInitialized" (click)="startCamera()">
-          ▶️ Démarrer
+        <button class="btn btn-primary" *ngIf="!isVideoInitialized && !selectedVideoFile && !selectedImageFile" (click)="startCamera()">
+          ▶️ Démarrer (Webcam)
         </button>
         <button class="btn btn-secondary" *ngIf="isVideoInitialized" (click)="stopCamera()">
           ⏹️ Arrêter
@@ -43,7 +61,7 @@
         <button class="btn btn-success" *ngIf="temporaryVideoBlob" (click)="uploadTemporaryVideo()">
           ☁️ Envoyer Vidéo
         </button>
-        <div class="dropdown" *ngIf="isVideoInitialized" #csvDropdown>
+        <div class="dropdown" *ngIf="isVideoInitialized || selectedVideoFile" #csvDropdown>
           <button class="btn btn-success dropdown-toggle" type="button" (click)="toggleCsvDropdown()" aria-expanded="false">
             📊 Exporter Données CSV
           </button>
@@ -60,6 +78,18 @@
             <li><a class="dropdown-item" (click)="downloadAllCSV()">Tout Exporter (Download)</a></li>
             <li><a class="dropdown-item" (click)="uploadAllCSV()">Tout Exporter (Upload)</a></li>
           </ul>        </div>
+      </div>
+    </section>
+
+    <!-- Section to display generated video after analysis -->
+    <section class="generated-video-section" *ngIf="storedVideoUrl">
+      <h2>🎥 Vidéo Générée après Analyse</h2>
+      <div class="video-display">
+        <video [src]="storedVideoUrl" controls class="generated-video"></video>
+        <div class="video-info">
+          <p>Vidéo stockée dans les ressources après l'analyse</p>
+          <button class="btn btn-info" (click)="downloadStoredVideo()">📥 Télécharger Vidéo</button>
+        </div>
       </div>
     </section>
 

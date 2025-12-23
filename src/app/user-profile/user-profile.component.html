@@ -6,7 +6,6 @@
     <h3>Informations Personnelles</h3>
     <div class="user-details">
       <p><strong>Nom:</strong> {{ currentUser.firstname }} {{ currentUser.lastname }}</p>
-      <p><strong>Email:</strong> {{ currentUser.email }}</p>
       <p><strong>Type d'utilisateur:</strong> {{ currentUser.userType?.nameFr || 'Non défini' }}</p>
       <p><strong>Statut:</strong> 
         <span class="status-badge" [class.active]="currentUser.enabled" [class.inactive]="!currentUser.enabled">

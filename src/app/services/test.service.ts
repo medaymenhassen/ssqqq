@@ -86,18 +86,20 @@ export class TestService {
 
   // CourseTest methods
   getAllCourseTests(): Observable<CourseTest[]> {
-    return this.http.get<CourseTest[]>(`${this.apiUrl}/tests/course-tests`);
+    return this.http.get<CourseTest[]>(`${this.apiUrl}/tests/course-tests`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   getCourseTestById(id: number): Observable<CourseTest> {
-    return this.http.get<CourseTest>(`${this.apiUrl}/tests/course-tests/${id}`);
+    return this.http.get<CourseTest>(`${this.apiUrl}/tests/course-tests/${id}`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   createCourseTest(courseTest: CourseTest): Observable<CourseTest> {
     return this.http.post<CourseTest>(`${this.apiUrl}/tests/course-tests`, courseTest, {
-      headers: new HttpHeaders({
-        'Content-Type': 'application/json'
-      })
+      headers: this.getAuthHeaders()
     });
   }
 
@@ -134,9 +136,7 @@ export class TestService {
 
   createTestQuestion(testQuestion: TestQuestion): Observable<TestQuestion> {
     return this.http.post<TestQuestion>(`${this.apiUrl}/tests/questions`, testQuestion, {
-      headers: new HttpHeaders({
-        'Content-Type': 'application/json'
-      })
+      headers: this.getAuthHeaders()
     });
   }
 
@@ -154,18 +154,20 @@ export class TestService {
 
   // TestAnswer methods
   getAllTestAnswers(): Observable<TestAnswer[]> {
-    return this.http.get<TestAnswer[]>(`${this.apiUrl}/tests/answers`);
+    return this.http.get<TestAnswer[]>(`${this.apiUrl}/tests/answers`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   getTestAnswerById(id: number): Observable<TestAnswer> {
-    return this.http.get<TestAnswer>(`${this.apiUrl}/tests/answers/${id}`);
+    return this.http.get<TestAnswer>(`${this.apiUrl}/tests/answers/${id}`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   createTestAnswer(testAnswer: TestAnswer): Observable<TestAnswer> {
     return this.http.post<TestAnswer>(`${this.apiUrl}/tests/answers`, testAnswer, {
-      headers: new HttpHeaders({
-        'Content-Type': 'application/json'
-      })
+      headers: this.getAuthHeaders()
     });
   }
 

@@ -40,7 +40,8 @@ export class TestQuestionFormComponent implements OnInit {
       questionText: ['', [Validators.required, Validators.minLength(2)]],
       questionOrder: ['', [Validators.required, Validators.min(1)]],
       points: [1, [Validators.min(1)]],
-      questionType: ['OPEN_ENDED', [Validators.required]]
+      questionType: ['OPEN_ENDED', [Validators.required]],
+      courseTestId: ['']  // Optional field, will be set from context if available
     });
   }
 
@@ -56,17 +57,25 @@ export class TestQuestionFormComponent implements OnInit {
     
     const id = this.route.snapshot.paramMap.get('id');
     const courseTestId = this.route.snapshot.paramMap.get('courseTestId');
+    const lessonId = this.route.snapshot.queryParamMap.get('lessonId');
     
     if (id) {
       this.isEditMode = true;
       this.questionID = +id;
       this.loadQuestion(this.questionID);
-    } else if (courseTestId) {
-      // Creating a new question for a specific course test
-      this.courseTestID = +courseTestId;
-      this.questionForm.patchValue({
-        courseTestId: this.courseTestID
-      });
+    } else {
+      // Creating a new question - check for context
+      if (courseTestId) {
+        // Creating a new question for a specific course test
+        this.courseTestID = +courseTestId;
+        this.questionForm.patchValue({
+          courseTestId: this.courseTestID
+        });
+      } else if (lessonId) {
+        // If coming from a lesson context, we might want to link to that lesson
+        // For now, we'll just log this context
+        console.log('Creating question from lesson context:', lessonId);
+      }
     }
   }
   
@@ -119,13 +128,21 @@ export class TestQuestionFormComponent implements OnInit {
       this.error = '';
 
       const question: TestQuestion = this.questionForm.value;
+      
       // Add courseTestId when creating a new question
-      if (!this.isEditMode && this.courseTestID) {
-        question.courseTestId = this.courseTestID;
-      }
-      // Add userId when creating a new question
-      if (!this.isEditMode && this.currentUser) {
-        question.userId = this.currentUser.id;
+      if (!this.isEditMode) {
+        // Prioritize courseTestID from context (route parameter)
+        if (this.courseTestID) {
+          question.courseTestId = this.courseTestID;
+        } else if (question.courseTestId) {
+          // Use value from form if available
+          question.courseTestId = question.courseTestId;
+        }
+        
+        // Add userId when creating a new question
+        if (this.currentUser) {
+          question.userId = this.currentUser.id;
+        }
       }
 
       if (this.isEditMode && this.questionID) {

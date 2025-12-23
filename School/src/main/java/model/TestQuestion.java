@@ -25,7 +25,7 @@ public class TestQuestion {
     private Long id;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "test_id", nullable = false)
+    @JoinColumn(name = "test_id", nullable = true)
     private CourseTest courseTest;
     
     @Column(nullable = false, length = 1000)

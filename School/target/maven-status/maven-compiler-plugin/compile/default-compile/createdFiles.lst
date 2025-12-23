@@ -27,6 +27,7 @@ com\auth\controller\TestController.class
 com\auth\util\JwtUtil.class
 com\auth\model\TestQuestion.class
 com\auth\security\JwtAuthenticationFilter.class
+com\auth\controller\VideoGeneratorUtil.class
 com\auth\service\AuthService.class
 com\auth\controller\LocationController.class
 com\auth\model\Location.class
@@ -77,7 +78,6 @@ com\auth\model\CourseLesson.class
 com\auth\model\User.class
 com\auth\repository\UserTypeRepository.class
 com\auth\repository\PasswordResetTokenRepository.class
-com\auth\controller\CsvVideoController$1.class
 com\auth\dto\DataRequest.class
 com\auth\controller\CsvVideoController.class
 com\auth\repository\LocationRepository.class

@@ -36,6 +36,17 @@
       </div>
     </div>
     
+    <div class="form-group">
+      <label for="courseTest">Course Test</label>
+      <select id="courseTest" formControlName="courseTestId" class="form-control" [class.error]="questionForm.get('courseTestId')?.invalid && questionForm.get('courseTestId')?.touched">
+        <option value="">Select a course test (optional)</option>
+        <option *ngFor="let test of courseTests" [value]="test.id">{{ test.title }}</option>
+      </select>
+      <div *ngIf="questionForm.get('courseTestId')?.invalid && questionForm.get('courseTestId')?.touched" class="error">
+        Please select a valid course test.
+      </div>
+    </div>
+    
 
     
     <div class="lesson-features">

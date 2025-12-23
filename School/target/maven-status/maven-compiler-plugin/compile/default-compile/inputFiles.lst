@@ -88,9 +88,11 @@ D:\final\3Dproject\School\src\main\java\model\RefreshToken.java
 D:\final\3Dproject\School\src\main\java\controller\SpecialUserRequestController.java
 D:\final\3Dproject\School\src\main\java\util\JwtUtil.java
 D:\final\3Dproject\School\src\main\java\model\TestQuestion.java
+D:\final\3Dproject\School\src\main\java\config\CustomAccessDeniedHandler.java
 D:\final\3Dproject\School\src\main\java\repository\UserOfferRepository.java
 D:\final\3Dproject\School\src\main\java\repository\UserRepository.java
 D:\final\3Dproject\School\src\main\java\security\JwtAuthenticationFilter.java
+D:\final\3Dproject\School\src\main\java\controller\VideoGeneratorUtil.java
 D:\final\3Dproject\School\src\main\java\model\Offer.java
 D:\final\3Dproject\School\src\main\java\config\SecurityConfig.java
 D:\final\3Dproject\School\src\main\java\repository\UserTestResultRepository.java

@@ -54,12 +54,16 @@ export class OfferService {
 
   // Get all active offers
   getAllActiveOffers(): Observable<Offer[]> {
-    return this.http.get<Offer[]>(`${this.apiUrl}/offers`);
+    return this.http.get<Offer[]>(`${this.apiUrl}/offers`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   // Get offer by ID
   getOfferById(id: number): Observable<Offer> {
-    return this.http.get<Offer>(`${this.apiUrl}/offers/${id}`);
+    return this.http.get<Offer>(`${this.apiUrl}/offers/${id}`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   // Create a new offer (admin only)

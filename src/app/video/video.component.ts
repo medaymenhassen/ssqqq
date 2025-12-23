@@ -63,8 +63,18 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   // For temporary video creation
   public temporaryVideoBlob: Blob | null = null;
+  private temporaryVideoUrl: string | null = null;
   private analysisStartTime: number | null = null;
   private analysisEndTime: number | null = null;
+  
+  // For video file upload
+  public selectedVideoFile: File | null = null;
+  public isProcessingVideo = false;
+  public storedVideoUrl: string | null = null;
+  
+  // For image file upload
+  public selectedImageFile: File | null = null;
+  public isProcessingImage = false;
 
   constructor(
     private videoService: VideoService,
@@ -198,6 +208,11 @@ export class VideoComponent implements OnInit, OnDestroy {
     try {
       // Create blob from recorded chunks
       const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+      // Revoke previous temporary video URL if it exists to prevent memory leaks
+      if (this.temporaryVideoUrl) {
+        URL.revokeObjectURL(this.temporaryVideoUrl);
+        this.temporaryVideoUrl = null;
+      }
       this.temporaryVideoBlob = blob;
       
       console.log(`✅ Temporary video created: ${blob.size} bytes, type: ${blob.type}`);
@@ -208,40 +223,6 @@ export class VideoComponent implements OnInit, OnDestroy {
       console.error('❌ Error creating temporary video:', error);
       this.errorMessage = 'Failed to create temporary video: ' + (error as Error).message;
     }
-  }
-
-  stopCamera(): void {
-    console.log('⏹️ Stopping camera...');
-    this.isTracking = false;
-
-    this.analysisEndTime = Date.now();
-
-    // Stop recording
-    this.stopRecording();
-
-    // Create video from CSV data
-    this.createVideoFromPoseCSV();
-
-    // Upload all CSV data to backend
-    this.uploadAllCSV();
-
-    this.sendCapturedDataToBackends();
-
-    // Stop all tracks
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => {
-        console.log('⏹️ Stopping track:', track.kind);
-        track.stop();
-      });
-      this.stream = null;
-    }
-
-    // Also stop the MediaPipe camera
-    if (this.videoService) {
-      this.videoService.dispose();
-    }
-
-    console.log('⏹️ Camera stopped');
   }
 
   getBodyConfidence(): number {
@@ -491,6 +472,21 @@ export class VideoComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (response) => {
         console.log('✅ Video created and stored:', response);
+        // Update the stored video URL with the one from the backend
+        if (response.videoUrl) {
+          // Prepend the API URL if it's a relative path
+          const fullVideoUrl = response.videoUrl.startsWith('http') ? 
+            response.videoUrl : 
+            `http://localhost:8080${response.videoUrl}`;
+          this.storedVideoUrl = fullVideoUrl;
+          console.log('✅ Backend video URL set for display:', fullVideoUrl);
+          
+          // Also revoke any previous temporary video URL to prevent memory leaks
+          if (this.temporaryVideoUrl) {
+            URL.revokeObjectURL(this.temporaryVideoUrl);
+            this.temporaryVideoUrl = null;
+          }
+        }
         alert('✅ Vidéo créée et stockée avec succès!');
       },
       error: (err) => {
@@ -982,5 +978,183 @@ export class VideoComponent implements OnInit, OnDestroy {
   getFaceConfidence(): number {
     if (!this.bodyAnalysis) return 0;
     return this.bodyAnalysis.faceConfidence || 0;
+  }
+
+  // ========== MÉTHODES POUR LE TÉLÉCHARGEMENT DE VIDÉO ==========
+
+  onVideoFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('video/')) {
+      this.selectedVideoFile = file;
+      this.errorMessage = '';
+      console.log('📁 Video file selected:', file.name);
+    } else {
+      this.errorMessage = 'Veuillez sélectionner un fichier vidéo valide.';
+      console.log('❌ Invalid file type selected');
+    }
+  }
+
+  async processVideoFile(): Promise<void> {
+    if (!this.selectedVideoFile) {
+      this.errorMessage = 'Aucun fichier vidéo sélectionné.';
+      return;
+    }
+
+    this.isProcessingVideo = true;
+    this.errorMessage = '';
+
+    try {
+      // In a real implementation, we would process the video file using MediaPipe
+      // For now, we'll simulate the processing by creating a URL for the selected file
+      const videoUrl = URL.createObjectURL(this.selectedVideoFile);
+      
+      // Set the video element source to the selected file
+      if (this.videoElement) {
+        this.videoElement.nativeElement.src = videoUrl;
+        this.videoElement.nativeElement.play();
+        
+        // Initialize MediaPipe for the video file
+        await this.videoService.initializeMediaPipe();
+        await this.videoService.setupHolistic(this.videoElement.nativeElement);
+        
+        this.isTracking = true;
+        this.isVideoInitialized = true;
+        this.analysisStartTime = Date.now();
+        
+        console.log('✅ Video file loaded and ready for analysis');
+      }
+    } catch (error) {
+      console.error('❌ Error processing video file:', error);
+      this.errorMessage = 'Erreur lors du traitement de la vidéo: ' + (error as Error).message;
+    } finally {
+      this.isProcessingVideo = false;
+    }
+  }
+
+  // Method to store video after analysis
+  storeAnalyzedVideo(): void {
+    console.log('💾 Storing analyzed video to resources...');
+    
+    // The video from CSV is already created by createVideoFromPoseCSV
+    // which receives the video URL from the backend
+    // If no backend video URL is set, we can use the temporary video as fallback
+    if (this.temporaryVideoBlob && !this.storedVideoUrl) {
+      // Create a local URL for immediate display
+      const storedUrl = URL.createObjectURL(this.temporaryVideoBlob);
+      this.storedVideoUrl = storedUrl;
+      // Store the URL so we can revoke it later
+      this.temporaryVideoUrl = storedUrl;
+      console.log('✅ Analyzed video stored and available for display');
+    }
+  }
+
+  downloadStoredVideo(): void {
+    if (!this.storedVideoUrl) {
+      console.log('⏭️ No stored video to download');
+      return;
+    }
+
+    // Create a temporary link to download the video
+    const a = document.createElement('a');
+    a.href = this.storedVideoUrl;
+    a.download = `analyzed-video-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(this.storedVideoUrl!);
+    }, 100);
+
+    console.log('📥 Stored video downloaded');
+  }
+
+  // ========== MÉTHODES POUR LE TÉLÉCHARGEMENT D'IMAGE ==========
+
+  onImageFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      this.selectedImageFile = file;
+      this.errorMessage = '';
+      console.log('📁 Image file selected:', file.name);
+    } else {
+      this.errorMessage = 'Veuillez sélectionner un fichier image valide.';
+      console.log('❌ Invalid file type selected');
+    }
+  }
+
+  async processImageFile(): Promise<void> {
+    if (!this.selectedImageFile) {
+      this.errorMessage = 'Aucun fichier image sélectionné.';
+      return;
+    }
+
+    this.isProcessingImage = true;
+    this.errorMessage = '';
+
+    try {
+      // In a real implementation, we would process the image file using MediaPipe
+      // For now, we'll simulate the processing by creating a URL for the selected file
+      const imageUrl = URL.createObjectURL(this.selectedImageFile);
+      
+      // Set the video element source to the selected image
+      if (this.videoElement) {
+        this.videoElement.nativeElement.src = imageUrl;
+        this.videoElement.nativeElement.play();
+        
+        // Initialize MediaPipe for the image file
+        await this.videoService.initializeMediaPipe();
+        await this.videoService.setupHolistic(this.videoElement.nativeElement);
+        
+        this.isTracking = true;
+        this.isVideoInitialized = true;
+        this.analysisStartTime = Date.now();
+        
+        console.log('✅ Image file loaded and ready for analysis');
+      }
+    } catch (error) {
+      console.error('❌ Error processing image file:', error);
+      this.errorMessage = 'Erreur lors du traitement de l' + "'" + 'image: ' + (error as Error).message;
+    } finally {
+      this.isProcessingImage = false;
+    }
+  }
+
+  // Override stopCamera to also store the analyzed video
+  stopCamera(): void {
+    console.log('⏹️ Stopping camera and storing analyzed video...');
+    this.isTracking = false;
+
+    this.analysisEndTime = Date.now();
+
+    // Stop recording
+    this.stopRecording();
+
+    // Create video from CSV data
+    this.createVideoFromPoseCSV();
+
+    // Upload all CSV data to backend
+    this.uploadAllCSV();
+
+    this.sendCapturedDataToBackends();
+
+    // Store the analyzed video
+    this.storeAnalyzedVideo();
+
+    // Stop all tracks
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => {
+        console.log('⏹️ Stopping track:', track.kind);
+        track.stop();
+      });
+      this.stream = null;
+    }
+
+    // Also stop the MediaPipe camera
+    if (this.videoService) {
+      this.videoService.dispose();
+    }
+
+    console.log('⏹️ Camera stopped and video stored');
   }
 }

@@ -392,14 +392,11 @@ export class AuthService {
   debugAuthState(): void {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
-
 
       if (accessToken) {
         try {
           const payload = this.decodeToken(accessToken);
         } catch (e) {
-          console.error('Failed to decode token:', e);
         }
       }
 
