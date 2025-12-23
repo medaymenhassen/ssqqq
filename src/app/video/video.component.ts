@@ -138,7 +138,6 @@ export class VideoComponent implements OnInit, OnDestroy {
         this.startRecording();
       }
     } catch (error) {
-      console.error('Error starting camera:', error);
       this.errorMessage = 'Failed to start camera: ' + (error as Error).message;
       this.isTracking = false;
     }
@@ -168,14 +167,12 @@ export class VideoComponent implements OnInit, OnDestroy {
       };
 
       this.mediaRecorder.onerror = (event: Event) => {
-        console.error('MediaRecorder error:', event);
         this.errorMessage = 'Error recording video';
       };
 
       // Start recording with 1 second chunks
       this.mediaRecorder.start(1000);
     } catch (error) {
-      console.error('Error starting recording:', error);
       this.errorMessage = 'Failed to start recording: ' + (error as Error).message;
     }
   }
@@ -204,7 +201,6 @@ export class VideoComponent implements OnInit, OnDestroy {
       // Clean up
       this.recordedChunks = [];
     } catch (error) {
-      console.error('Error creating temporary video:', error);
       this.errorMessage = 'Failed to create temporary video: ' + (error as Error).message;
     }
   }
@@ -446,7 +442,6 @@ export class VideoComponent implements OnInit, OnDestroy {
             videoName
           ).subscribe({
             next: (response) => {
-              console.log('Video created and stored:', response);
               // Update the stored video URL with the one from the backend
               if (response.videoUrl) {
                 // Prepend the API URL if it's a relative path
@@ -464,7 +459,6 @@ export class VideoComponent implements OnInit, OnDestroy {
               alert('✅ Vidéo créée et stockée avec succès!');
             },
             error: (err) => {
-              console.error('Error creating video from CSV:', err);
               // Create video locally if backend fails
               this.createVideoLocally(csvContent, videoName);
             }
@@ -475,7 +469,6 @@ export class VideoComponent implements OnInit, OnDestroy {
         }
       })
       .catch(error => {
-        console.error('Backend not available, creating video locally:', error);
         // Backend not available, create video locally
         this.createVideoLocally(csvContent, videoName);
       });
@@ -506,7 +499,7 @@ export class VideoComponent implements OnInit, OnDestroy {
       URL.revokeObjectURL(csvUrl);
     }, 100);
     
-    console.log('Local video processing completed, CSV file downloaded for later backend processing');
+
   }
 
   uploadPoseCSV(): void {
@@ -551,10 +544,10 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.userId) {
       this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'pose_data', csvFile).subscribe({
         next: (document) => {
-          console.log('Pose CSV data uploaded as document:', document);
+
         },
         error: (err) => {
-          console.error('Error uploading pose CSV data as document:', err);
+
         }
       });
     }
@@ -591,10 +584,10 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.userId) {
       this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'face_data', csvFile).subscribe({
         next: (document) => {
-          console.log('Face CSV data uploaded as document:', document);
+
         },
         error: (err) => {
-          console.error('Error uploading face CSV data as document:', err);
+
         }
       });
     }
@@ -642,10 +635,10 @@ export class VideoComponent implements OnInit, OnDestroy {
     if (this.userId) {
       this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'hands_data', csvFile).subscribe({
         next: (document) => {
-          console.log('Hands CSV data uploaded as document:', document);
+
         },
         error: (err) => {
-          console.error('Error uploading hands CSV data as document:', err);
+
         }
       });
     }
@@ -765,7 +758,6 @@ export class VideoComponent implements OnInit, OnDestroy {
   }
 
   private sendCapturedDataToBackends(): void {
-    console.log('Sending captured data to backends...');
     
     // Check if backend is available before sending data
     fetch('http://localhost:8080/health', { method: 'GET' })
@@ -774,12 +766,10 @@ export class VideoComponent implements OnInit, OnDestroy {
           // Backend is available, proceed with API calls
           this.sendDataToBackend();
         } else {
-          console.log('Backend not available, storing data locally');
           this.storeDataLocally();
         }
       })
       .catch(error => {
-        console.log('Backend not available, storing data locally');
         this.storeDataLocally();
       });
     
@@ -820,7 +810,7 @@ export class VideoComponent implements OnInit, OnDestroy {
 
     
     
-    console.log('All captured data processed');
+
   }
   
   private sendDataToBackend(): void {
@@ -858,7 +848,7 @@ export class VideoComponent implements OnInit, OnDestroy {
       allMovementData.push(movementRecord);
     });
     
-    console.log(`Preparing to send ${allMovementData.length} movement records to Django AI`);
+
     
     if (allMovementData.length > 0) {
       allMovementData.forEach((movementData, index) => {
@@ -870,18 +860,15 @@ export class VideoComponent implements OnInit, OnDestroy {
 
         this.aiService.createMovementRecord(aiRecord).subscribe({
           next: (record) => {
-            console.log(`Movement record ${index + 1}/${allMovementData.length} sent to Django AI:`, record.id);
           },
           error: (err) => {
-            console.error(`Error sending movement record ${index + 1} to Django AI:`, err);
           }
         });
       });
     } else {
-      console.log('No movement data to send to Django AI');
     }
     
-    console.log('All captured data sent to backends');
+
   }
   
   private storeDataLocally(): void {
@@ -898,7 +885,7 @@ export class VideoComponent implements OnInit, OnDestroy {
     const dataStr = JSON.stringify(localData);
     localStorage.setItem('movementData', dataStr);
     
-    console.log('Movement data stored locally for later upload');
+
     
     // Also create a downloadable file
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1029,7 +1016,6 @@ export class VideoComponent implements OnInit, OnDestroy {
     }
 
     if (!this.userId) {
-      console.log('⏭️ No user ID available');
       this.errorMessage = 'No user ID available';
       return;
     }
@@ -1038,11 +1024,9 @@ export class VideoComponent implements OnInit, OnDestroy {
     
     this.videoUploadService.uploadVideo(this.temporaryVideoBlob, this.userId, filename).subscribe({
       next: (response) => {
-        console.log('Temporary video uploaded successfully:', response);
         alert('Video uploaded successfully!');
       },
       error: (err) => {
-        console.error('Error uploading temporary video:', err);
         this.errorMessage = 'Error uploading video: ' + (err.message || 'Unknown error');
         alert('Error uploading video');
       }
@@ -1095,7 +1079,6 @@ export class VideoComponent implements OnInit, OnDestroy {
         this.analysisStartTime = Date.now();
       }
     } catch (error) {
-      console.error('Error processing video file:', error);
       this.errorMessage = 'Erreur lors du traitement de la vidéo: ' + (error as Error).message;
     } finally {
       this.isProcessingVideo = false;
@@ -1119,7 +1102,6 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   downloadStoredVideo(): void {
     if (!this.storedVideoUrl) {
-      console.log('⏭️ No stored video to download');
       return;
     }
 
@@ -1176,7 +1158,6 @@ export class VideoComponent implements OnInit, OnDestroy {
         this.analysisStartTime = Date.now();
       }
     } catch (error) {
-      console.error('Error processing image file:', error);
       this.errorMessage = 'Erreur lors du traitement de l' + "'" + 'image: ' + (error as Error).message;
     } finally {
       this.isProcessingImage = false;
