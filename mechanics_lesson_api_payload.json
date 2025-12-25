@@ -1,0 +1,11 @@
+{
+  "title": "Introduction to Mechanics - Motion and Forces",
+  "description": "* Fundamentals of Mechanics\nThis lesson covers the basic principles of mechanics including motion, forces, and Newton's laws.\n\n* Kinematics\nKinematics is the study of motion without considering the forces that cause it.\n\n* Dynamics\nDynamics deals with the relationship between motion and the forces that cause it.",
+  "contentDescription": "* Position, Velocity, and Acceleration\n- Position: The location of an object in space\n- Velocity: The rate of change of position\n- Acceleration: The rate of change of velocity\n\n* Newton's Three Laws of Motion\n- **First Law**: An object at rest stays at rest and an object in motion stays in motion unless acted upon by an external force\n- **Second Law**: F = ma (Force equals mass times acceleration)\n- **Third Law**: For every action, there is an equal and opposite reaction\n\n* Types of Forces\n- Gravitational Force\n- Normal Force\n- Friction Force\n- Tension Force\n\n* Applications in Real Life\n- Automotive engineering\n- Construction and architecture\n- Sports science\n- Space exploration",
+  "videoUrl": "https://example.com/mechanics-video.mp4",
+  "animation3dUrl": "https://example.com/mechanics-animation.glb",
+  "contentTitle": "Mechanics - Chapter 1: Motion Fundamentals",
+  "displayOrder": 1,
+  "lessonOrder": 1,
+  "isService": false
+}

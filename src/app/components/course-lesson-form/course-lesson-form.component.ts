@@ -117,7 +117,9 @@ export class CourseLessonFormComponent implements OnInit {
             // Upload files if selected
             this.uploadFiles(updatedLesson.id);
             this.loading = false;
-            this.router.navigate(['/course-lessons']);
+            // Generate slug from the lesson title
+            const slug = this.generateSlug(lesson.title);
+            this.router.navigate(['/course-lessons', updatedLesson.id, slug]);
           },
           error: (error) => {
             this.loading = false;
@@ -132,7 +134,9 @@ export class CourseLessonFormComponent implements OnInit {
             // Upload files if selected
             this.uploadFiles(newLesson.id);
             this.loading = false;
-            this.router.navigate(['/course-lessons']);
+            // Generate slug from the lesson title
+            const slug = this.generateSlug(lesson.title);
+            this.router.navigate(['/course-lessons', newLesson.id, slug]);
           },
           error: (error) => {
             this.loading = false;
@@ -172,5 +176,14 @@ export class CourseLessonFormComponent implements OnInit {
 
   onCancel(): void {
     this.router.navigate(['/course-lessons']);
+  }
+
+  generateSlug(title: string): string {
+    if (!title) return 'lesson';
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[\s\W-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
 }

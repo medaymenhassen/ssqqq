@@ -6,7 +6,11 @@ import com.auth.service.OfferService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import com.auth.model.User;
 
 import java.util.List;
 
@@ -17,6 +21,9 @@ public class OfferController {
     
     @Autowired
     private OfferService offerService;
+    
+    @Autowired
+    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
     
     // Get all active offers
     @GetMapping
@@ -32,7 +39,7 @@ public class OfferController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
-    // Create a new offer (public - no authentication required)
+    // Create a new offer (admin users only)
     @PostMapping
     public Offer createOffer(@RequestBody Offer offer) {
 
@@ -67,12 +74,17 @@ public class OfferController {
     // Purchase an offer
     @PostMapping("/{offerId}/purchase")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<?> purchaseOffer(@PathVariable Long offerId, @RequestParam Long userId) {
+    public ResponseEntity<?> purchaseOffer(@PathVariable Long offerId) {
         try {
-            UserOffer userOffer = offerService.purchaseOffer(userId, offerId);
+            // Get the authenticated user from security context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String email = authentication.getName();
+            
+            // Use the email to purchase the offer directly
+            UserOffer userOffer = offerService.purchaseOfferByEmail(email, offerId);
             return ResponseEntity.ok(userOffer);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Could not purchase offer: " + e.getMessage());
         }
     }
     
@@ -81,6 +93,66 @@ public class OfferController {
     public ResponseEntity<Boolean> userHasAccess(@PathVariable Long userId) {
         boolean hasAccess = offerService.userHasAccessToContent(userId);
         return ResponseEntity.ok(hasAccess);
+    }
+    
+    // Get user's pending offers (awaiting admin approval)
+    @GetMapping("/user/{userId}/pending")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<UserOffer>> getUserPendingOffers(@PathVariable Long userId) {
+        try {
+            List<UserOffer> userOffers = offerService.getUserPendingOffers(userId);
+            return ResponseEntity.ok(userOffers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    // Get user's approved offers
+    @GetMapping("/user/{userId}/approved")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<UserOffer>> getUserApprovedOffers(@PathVariable Long userId) {
+        try {
+            List<UserOffer> userOffers = offerService.getUserApprovedOffers(userId);
+            return ResponseEntity.ok(userOffers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    // Get user's rejected offers
+    @GetMapping("/user/{userId}/rejected")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<UserOffer>> getUserRejectedOffers(@PathVariable Long userId) {
+        try {
+            List<UserOffer> userOffers = offerService.getUserRejectedOffers(userId);
+            return ResponseEntity.ok(userOffers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    // Admin approve an offer
+    @PutMapping("/{userOfferId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserOffer> approveOffer(@PathVariable Long userOfferId) {
+        try {
+            UserOffer userOffer = offerService.approveOffer(userOfferId);
+            return ResponseEntity.ok(userOffer);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    // Admin reject an offer
+    @PutMapping("/{userOfferId}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserOffer> rejectOffer(@PathVariable Long userOfferId) {
+        try {
+            UserOffer userOffer = offerService.rejectOffer(userOfferId);
+            return ResponseEntity.ok(userOffer);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
     
     // Get user's purchased offers

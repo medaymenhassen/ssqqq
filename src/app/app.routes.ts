@@ -14,6 +14,7 @@ import { TestAnswerFormComponent } from './components/test-answer-form/test-answ
 import { QuestionAnswerManagerComponent } from './components/question-answer-manager/question-answer-manager.component';
 import { CourseLessonListComponent } from './components/course-lesson-list/course-lesson-list.component';
 import { CourseLessonFormComponent } from './components/course-lesson-form/course-lesson-form.component';
+import { CourseLessonDetailComponent } from './components/course-lesson-detail/course-lesson-detail.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { ImageAnalysisComponent } from './image-analysis/image-analysis.component';
 import { OfferListComponent } from './offer/offer-list.component';
@@ -26,10 +27,10 @@ export const routes: Routes = [
   { path: 'bodyanalytics', component: VideoComponent },
   { path: 'image-analysis', component: ImageAnalysisComponent },
   { path: 'data', component: DataViewerComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  { path: 'user-types', component: UserTypeListComponent },
-  { path: 'user-types/create', component: UserTypeFormComponent },
+  { path: 'login', component: LoginComponent},
+  { path: 'register', component: RegisterComponent},
+  { path: 'user-types', component: UserTypeListComponent},
+  { path: 'user-types/create', component: UserTypeFormComponent},
   { path: 'user-types/:id/edit', component: UserTypeFormComponent },
   { path: 'users', component: UserListComponent },
   { path: 'course-tests', component: CourseTestListComponent },
@@ -45,6 +46,7 @@ export const routes: Routes = [
   { path: 'course-lessons', component: CourseLessonListComponent },
   { path: 'course-lessons/create', component: CourseLessonFormComponent },
   { path: 'course-lessons/:id/edit', component: CourseLessonFormComponent },
+  { path: 'course-lessons/:idSlug', component: CourseLessonDetailComponent },
   { path: 'profile', component: UserProfileComponent },
   { path: 'profile/:id', component: UserProfileComponent },
   { path: 'offers', component: OfferListComponent },

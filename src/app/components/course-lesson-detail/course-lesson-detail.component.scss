@@ -1,0 +1,154 @@
+.lesson-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  min-height: calc(100vh - 60px);
+}
+
+.lesson-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    
+    &.btn-primary {
+      background-color: #22C55E;
+      color: white;
+      
+      &:hover {
+        background-color: darken(#22C55E, 10%);
+      }
+    }
+    
+    &.btn-secondary {
+      background-color: #6B7280;
+      color: white;
+      
+      &:hover {
+        background-color: darken(#6B7280, 10%);
+      }
+    }
+  }
+}
+
+.lesson-content {
+  background-color: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  
+  .lesson-title {
+    color: #1E3A8A;
+    margin-bottom: 20px;
+    font-size: 2.5rem;
+  }
+  
+  .lesson-info {
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #F3F4F6;
+    border-radius: 5px;
+    
+    p {
+      margin: 5px 0;
+    }
+  }
+  
+  .lesson-description,
+  .lesson-content-section {
+    margin-bottom: 30px;
+    
+    h2 {
+      color: #1E3A8A;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #E5E7EB;
+      padding-bottom: 5px;
+    }
+    
+    .processed-content {
+      line-height: 1.6;
+      
+      h2 {
+        margin: 20px 0 10px 0;
+        font-size: 1.5rem;
+        color: #1E3A8A;
+      }
+      
+      ul {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+      
+      li {
+        margin-bottom: 5px;
+      }
+      
+      strong {
+        font-weight: bold;
+      }
+      
+      em {
+        font-style: italic;
+      }
+    }
+  }
+  
+  .lesson-media {
+    margin-top: 30px;
+    
+    .video-section,
+    .animation-section {
+      margin-bottom: 20px;
+      
+      h3 {
+        color: #1E3A8A;
+        margin-bottom: 10px;
+      }
+      
+      video,
+      iframe {
+        border-radius: 5px;
+        border: 1px solid #E5E7EB;
+      }
+    }
+  }
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 40px;
+  
+  .btn {
+    padding: 10px 20px;
+    background-color: #22C55E;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    
+    &:hover {
+      background-color: darken(#22C55E, 10%);
+    }
+  }
+}
+
+.error {
+  background-color: #FEE2E2;
+  color: #EF4444;
+  border-radius: 5px;
+  margin: 20px;
+}

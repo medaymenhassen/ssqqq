@@ -1,0 +1,20 @@
+{
+  "title": "Pack Premium - Formation Mécanique Avancée",
+  "description": "* Formation Complète en Mécanique\nDécouvrez notre pack premium qui comprends tous les modules de formation en mécanique.\n\n* Contenu Inclus\n- 50 leçons interactives sur la mécanique\n- Animations 3D détaillées\n- Exercices pratiques et évaluations\n- Support technique 24/7\n- Certification à la fin du parcours\n\n* Avantages\n- Accès illimité à tous les contenus\n- Mise à jour régulière du contenu\n- Communauté d'apprenants\n- Suivi personnalisé de votre progression",
+  "price": 299.99,
+  "duration": "6 mois",
+  "features": [
+    "50 leçons interactives",
+    "Animations 3D détaillées",
+    "Exercices pratiques",
+    "Support technique 24/7",
+    "Certification incluse",
+    "Accès illimité",
+    "Mise à jour continue"
+  ],
+  "imageUrl": "https://example.com/premium-pack-image.jpg",
+  "videoUrl": "https://example.com/premium-pack-video.mp4",
+  "isActive": true,
+  "createdAt": "2025-12-25T10:51:33.547166",
+  "updatedAt": "2025-12-25T10:51:33.547166"
+}

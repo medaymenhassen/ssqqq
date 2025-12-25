@@ -1,0 +1,16 @@
+[Unit]
+Description=CognitiEx Spring Boot Application
+After=network.target
+
+[Service]
+Type=simple
+User=debian
+WorkingDirectory=/var/www/ssqqq/School/target
+ExecStart=/usr/bin/java -jar /var/www/ssqqq/School/target/School-0.0.1-SNAPSHOT.jar
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

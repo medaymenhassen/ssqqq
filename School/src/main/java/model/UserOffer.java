@@ -28,6 +28,10 @@ public class UserOffer {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
     
+    @Column(name = "approval_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+    
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
@@ -43,6 +47,7 @@ public class UserOffer {
         this.purchaseDate = purchaseDate;
         this.expirationDate = expirationDate;
         this.isActive = true;
+        this.approvalStatus = ApprovalStatus.PENDING; // Default to pending for admin approval
     }
     
     @PrePersist
@@ -103,6 +108,14 @@ public class UserOffer {
     
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+    
+    public ApprovalStatus getApprovalStatus() {
+        return approvalStatus;
+    }
+    
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        this.approvalStatus = approvalStatus;
     }
     
     public LocalDateTime getCreatedAt() {

@@ -8,6 +8,7 @@ com\auth\repository\ChatConversationRepository.class
 com\cognitiex\dto\SubUserResponse.class
 com\auth\service\CourseLessonService.class
 com\auth\service\DocumentService.class
+com\auth\model\ApprovalStatus.class
 com\auth\repository\UserModuleCompletionRepository.class
 com\auth\model\UserDomainCompletion.class
 com\auth\repository\ServiceRequestRepository.class

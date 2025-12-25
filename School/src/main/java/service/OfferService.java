@@ -3,6 +3,7 @@ package com.auth.service;
 import com.auth.model.Offer;
 import com.auth.model.User;
 import com.auth.model.UserOffer;
+import com.auth.model.ApprovalStatus;
 import com.auth.repository.OfferRepository;
 import com.auth.repository.UserOfferRepository;
 import com.auth.repository.UserRepository;
@@ -84,20 +85,88 @@ public class OfferService {
         LocalDateTime expirationDate = purchaseDate.plusHours(offer.getDurationHours());
         
         UserOffer userOffer = new UserOffer(user, offer, purchaseDate, expirationDate);
+        // By default, new purchases are in PENDING status awaiting admin approval
         return userOfferRepository.save(userOffer);
     }
     
-    // Check if user has access to content based on purchased offers
+    // Purchase an offer for a user by email
+    public UserOffer purchaseOfferByEmail(String email, Long offerId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new RuntimeException("Offer not found with id: " + offerId));
+        
+        // Check if user already has this offer
+        if (userOfferRepository.existsByUserAndOfferAndIsActiveTrue(user, offer)) {
+            throw new RuntimeException("User already has this offer");
+        }
+        
+        LocalDateTime purchaseDate = LocalDateTime.now();
+        LocalDateTime expirationDate = purchaseDate.plusHours(offer.getDurationHours());
+        
+        UserOffer userOffer = new UserOffer(user, offer, purchaseDate, expirationDate);
+        // By default, new purchases are in PENDING status awaiting admin approval
+        return userOfferRepository.save(userOffer);
+    }
+    
+    // Approve a user's offer access
+    public UserOffer approveOffer(Long userOfferId) {
+        UserOffer userOffer = userOfferRepository.findById(userOfferId)
+                .orElseThrow(() -> new RuntimeException("UserOffer not found with id: " + userOfferId));
+        
+        userOffer.setApprovalStatus(ApprovalStatus.APPROVED);
+        userOffer.setIsActive(true); // Enable access after approval
+        return userOfferRepository.save(userOffer);
+    }
+    
+    // Reject a user's offer access
+    public UserOffer rejectOffer(Long userOfferId) {
+        UserOffer userOffer = userOfferRepository.findById(userOfferId)
+                .orElseThrow(() -> new RuntimeException("UserOffer not found with id: " + userOfferId));
+        
+        userOffer.setApprovalStatus(ApprovalStatus.REJECTED);
+        userOffer.setIsActive(false); // Disable access if rejected
+        return userOfferRepository.save(userOffer);
+    }
+    
+    // Check if user has access to content based on approved offers
     public boolean userHasAccessToContent(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         
-        // Check if user has any active offers that haven't expired
-        List<UserOffer> activeOffers = userOfferRepository.findByUserAndIsActiveTrueAndExpirationDateAfter(
-                user, LocalDateTime.now());
+        // Check if user has any approved and active offers that haven't expired
+        List<UserOffer> activeOffers = userOfferRepository.findByUserAndIsActiveTrueAndApprovalStatusAndExpirationDateAfter(
+                user, ApprovalStatus.APPROVED, LocalDateTime.now());
         
         return !activeOffers.isEmpty();
     }
+    
+    // Get user's pending offers (awaiting approval)
+    public List<UserOffer> getUserPendingOffers(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        return userOfferRepository.findByUserAndApprovalStatus(user, ApprovalStatus.PENDING);
+    }
+    
+    // Get user's approved offers
+    public List<UserOffer> getUserApprovedOffers(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        return userOfferRepository.findByUserAndApprovalStatus(user, ApprovalStatus.APPROVED);
+    }
+    
+    // Get user's rejected offers
+    public List<UserOffer> getUserRejectedOffers(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        return userOfferRepository.findByUserAndApprovalStatus(user, ApprovalStatus.REJECTED);
+    }
+    
+
     
     // Get user's purchased offers
     public List<UserOffer> getUserPurchasedOffers(Long userId) {

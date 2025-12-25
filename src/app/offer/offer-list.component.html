@@ -36,10 +36,10 @@
           Delete
         </button>
         <button 
-          class="purchase-btn" 
+          [class]="getButtonClass(offer.id)"
           (click)="purchaseOffer(offer.id)"
-          [disabled]="isPurchasing">
-          {{ isPurchasing ? 'Processing...' : 'Purchase' }}
+          [disabled]="isPurchasing || isButtonDisabled(offer.id)">
+          {{ isPurchasing ? 'Processing...' : getButtonText(offer.id) }}
         </button>
       </div>
     </div>

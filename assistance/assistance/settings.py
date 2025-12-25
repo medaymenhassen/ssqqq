@@ -38,7 +38,7 @@ SECRET_KEY = get_secret_key()
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'cognitiex.com', 'www.cognitiex.com']
 
 
 # Application definition
@@ -95,7 +95,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'sss',
         'USER': 'postgres',
-        'PASSWORD': 'mohamed0192837465MED',
+        'PASSWORD': 'qs',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -138,7 +138,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Media files (Uploaded files)
 MEDIA_URL = '/media/'

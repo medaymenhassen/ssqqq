@@ -67,4 +67,13 @@ export class CourseLessonListComponent implements OnInit {
       });
     }
   }
+
+  generateSlug(title: string): string {
+    if (!title) return 'lesson';
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[\s\W-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
 }

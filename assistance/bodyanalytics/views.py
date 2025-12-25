@@ -1,4 +1,8 @@
 from django.shortcuts import render
+from django.http import JsonResponse, HttpResponse
+import json
+import os
+from pathlib import Path
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -81,6 +85,42 @@ class CreateMovementRecordView(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class EVFAQView(APIView):
+    def get(self, request):
+        """
+        Serve the electric vehicle FAQ JSON file
+        """
+        try:
+            # Construct the path to the static JSON file
+            base_dir = Path(__file__).resolve().parent.parent
+            json_file_path = base_dir / 'static' / 'electric-vehicle-faq.json'
+            
+            # Check if the file exists
+            if not json_file_path.exists():
+                return JsonResponse(
+                    {'error': 'FAQ file not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Read the JSON file
+            with open(json_file_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            
+            return JsonResponse(data, safe=False)
+        
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {'error': 'Invalid JSON in FAQ file'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            return JsonResponse(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     
     def save_pose_data(self, movement_record, pose_data):
         if not pose_data:

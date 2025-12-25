@@ -34,6 +34,16 @@
   margin-top: 5px;
 }
 
+.markdown-guide {
+  margin-top: 5px;
+  
+  small {
+    color: #666;
+    font-style: italic;
+    font-size: 12px;
+  }
+}
+
 .form-actions {
   display: flex;
   gap: 10px;

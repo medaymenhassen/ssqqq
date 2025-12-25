@@ -1,0 +1,23 @@
+[Unit]
+Description=cognitiex gunicorn daemon
+After=network.target
+
+[Service]
+Type=simple
+User=debian
+Group=www-data
+WorkingDirectory=/var/www/ssqqq/assistance
+Environment="PATH=/var/www/ssqqq/assistance/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=assistance.settings"
+Environment="PYTHONPATH=/var/www/ssqqq/assistance"
+ExecStart=/var/www/ssqqq/assistance/venv/bin/gunicorn \
+          --workers 3 \
+          --worker-class sync \
+          --bind 127.0.0.1:8000 \
+          --timeout 120 \
+          assistance.wsgi:application
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

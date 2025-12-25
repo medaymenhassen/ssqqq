@@ -12,7 +12,10 @@
     
     <div class="form-group">
       <label for="description">Description</label>
-      <textarea id="description" formControlName="description" class="form-control"></textarea>
+      <textarea id="description" formControlName="description" class="form-control" placeholder="Write your content here. Use * for h2 headings, **text** for bold, *text* for italic, and - for lists"></textarea>
+      <div class="markdown-guide">
+        <small>Formatting guide: * Heading -> h2, **text** -> bold, *text* -> italic, - item -> list</small>
+      </div>
       <div *ngIf="lessonForm.get('description')?.invalid && lessonForm.get('description')?.touched" class="error">
         Description must be less than 1000 characters.
       </div>
@@ -43,7 +46,10 @@
     
     <div class="form-group">
       <label for="contentDescription">Content Description</label>
-      <textarea id="contentDescription" formControlName="contentDescription" class="form-control"></textarea>
+      <textarea id="contentDescription" formControlName="contentDescription" class="form-control" placeholder="Write your content here. Use * for h2 headings, **text** for bold, *text* for italic, and - for lists"></textarea>
+      <div class="markdown-guide">
+        <small>Formatting guide: * Heading -> h2, **text** -> bold, *text* -> italic, - item -> list</small>
+      </div>
       <div *ngIf="lessonForm.get('contentDescription')?.invalid && lessonForm.get('contentDescription')?.touched" class="error">
         Content description must be less than 2000 characters.
       </div>

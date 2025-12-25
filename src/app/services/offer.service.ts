@@ -22,6 +22,7 @@ export interface UserOffer {
   purchaseDate: string;
   expirationDate: string;
   isActive: boolean;
+  approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   updatedAt: string;
 }
@@ -89,7 +90,7 @@ export class OfferService {
 
   // Purchase an offer
   purchaseOffer(offerId: number, userId: number): Observable<UserOffer> {
-    return this.http.post<UserOffer>(`${this.apiUrl}/offers/${offerId}/purchase?userId=${userId}`, {}, {
+    return this.http.post<UserOffer>(`${this.apiUrl}/offers/${offerId}/purchase`, {}, {
       headers: this.getAuthHeaders()
     });
   }
@@ -104,6 +105,27 @@ export class OfferService {
   // Get user's purchased offers
   getUserPurchasedOffers(userId: number): Observable<UserOffer[]> {
     return this.http.get<UserOffer[]>(`${this.apiUrl}/offers/user/${userId}/purchases`, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  // Get user's pending offers
+  getUserPendingOffers(userId: number): Observable<UserOffer[]> {
+    return this.http.get<UserOffer[]>(`${this.apiUrl}/offers/user/${userId}/pending`, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  // Get user's approved offers
+  getUserApprovedOffers(userId: number): Observable<UserOffer[]> {
+    return this.http.get<UserOffer[]>(`${this.apiUrl}/offers/user/${userId}/approved`, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  // Get user's rejected offers
+  getUserRejectedOffers(userId: number): Observable<UserOffer[]> {
+    return this.http.get<UserOffer[]>(`${this.apiUrl}/offers/user/${userId}/rejected`, {
       headers: this.getAuthHeaders()
     });
   }
