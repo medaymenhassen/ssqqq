@@ -77,8 +77,10 @@ public class OfferService {
                 .orElseThrow(() -> new RuntimeException("Offer not found with id: " + offerId));
         
         // Check if user already has this offer
-        if (userOfferRepository.existsByUserAndOfferAndIsActiveTrue(user, offer)) {
-            throw new RuntimeException("User already has this offer");
+        Optional<UserOffer> existingUserOffer = userOfferRepository.findByUserAndOfferAndIsActiveTrue(user, offer);
+        if (existingUserOffer.isPresent()) {
+            // Return the existing offer instead of throwing an exception
+            return existingUserOffer.get();
         }
         
         LocalDateTime purchaseDate = LocalDateTime.now();
@@ -98,8 +100,10 @@ public class OfferService {
                 .orElseThrow(() -> new RuntimeException("Offer not found with id: " + offerId));
         
         // Check if user already has this offer
-        if (userOfferRepository.existsByUserAndOfferAndIsActiveTrue(user, offer)) {
-            throw new RuntimeException("User already has this offer");
+        Optional<UserOffer> existingUserOffer = userOfferRepository.findByUserAndOfferAndIsActiveTrue(user, offer);
+        if (existingUserOffer.isPresent()) {
+            // Return the existing offer instead of throwing an exception
+            return existingUserOffer.get();
         }
         
         LocalDateTime purchaseDate = LocalDateTime.now();
@@ -142,6 +146,30 @@ public class OfferService {
         return !activeOffers.isEmpty();
     }
     
+    // Get remaining time for user's active offers
+    public long getUserRemainingMinutes(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        // Get the most recent active offer
+        List<UserOffer> activeOffers = userOfferRepository.findByUserAndIsActiveTrueAndApprovalStatusAndExpirationDateAfter(
+                user, ApprovalStatus.APPROVED, LocalDateTime.now());
+        
+        if (activeOffers.isEmpty()) {
+            return 0; // No active offers
+        }
+        
+        // Find the offer with the latest expiration date
+        LocalDateTime latestExpiration = activeOffers.stream()
+                .map(UserOffer::getExpirationDate)
+                .max(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now());
+        
+        // Calculate remaining minutes
+        long minutesUntilExpiration = java.time.Duration.between(LocalDateTime.now(), latestExpiration).toMinutes();
+        return Math.max(0, minutesUntilExpiration); // Return 0 if negative
+    }
+    
     // Get user's pending offers (awaiting approval)
     public List<UserOffer> getUserPendingOffers(Long userId) {
         User user = userRepository.findById(userId)
@@ -174,5 +202,55 @@ public class OfferService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         
         return userOfferRepository.findByUserAndIsActiveTrue(user);
+    }
+    
+    // Get user's specific offer by email and offer ID
+    public UserOffer getUserOfferByEmailAndOfferId(String email, Long offerId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new RuntimeException("Offer not found with id: " + offerId));
+        
+        return userOfferRepository.findByUserAndOfferAndIsActiveTrue(user, offer)
+                .orElse(null); // Return null if not found
+    }
+    
+    // Get user by email
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+    }
+    
+    // Track lesson time for a user
+    public boolean trackLessonTime(Long userId, Long lessonId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+            
+            // Find an active approved offer for this user
+            List<UserOffer> activeOffers = userOfferRepository.findByUserAndIsActiveTrueAndApprovalStatusAndExpirationDateAfter(
+                    user, ApprovalStatus.APPROVED, LocalDateTime.now());
+            
+            if (activeOffers.isEmpty()) {
+                // User has no active offers, so they shouldn't be able to access lessons
+                return false;
+            }
+            
+            // In a real implementation, we would deduct time from the user's offer
+            // For now, we'll just return true to indicate time tracking is successful
+            // This is a simplified implementation - in a full implementation you would:
+            // 1. Track the time spent on the lesson
+            // 2. Deduct that time from the user's remaining time
+            // 3. Update the offer's expiration date accordingly
+            
+            // For demonstration purposes, let's assume we're deducting 1 second
+            // from the user's active offer (in a real app, you'd track actual time spent)
+            
+            return true;
+        } catch (Exception e) {
+            System.err.println("Error tracking lesson time: " + e.getMessage());
+            return false;
+        }
     }
 }

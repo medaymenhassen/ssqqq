@@ -1,20 +1,35 @@
 <div class="lesson-detail-container">
   <div class="lesson-header">
-    <button class="btn btn-secondary" (click)="onBack()">Back to Lessons</button>
-    <button class="btn btn-primary" (click)="onEdit()" *ngIf="lesson">Edit Lesson</button>
+    <div class="timer-display" *ngIf="remainingTime !== null">
+      <h3>⏱️ Time Remaining: {{ getFormattedTime() }}</h3>
+    </div>
   </div>
 
   <div class="lesson-content" *ngIf="!loading && !error && lesson">
-    <h1 class="lesson-title">{{ lesson.title }}</h1>
-    
-    <div class="lesson-info">
-      <p><strong>Order:</strong> {{ lesson.lessonOrder }}</p>
-      <p><strong>Created:</strong> {{ lesson.createdAt | date }}</p>
-      <p><strong>Updated:</strong> {{ lesson.updatedAt | date }}</p>
+    <!-- H1: Lesson Title First -->
+    <div class="lesson-header-section">
+      <h1 class="lesson-title">{{ lesson.title }}</h1>
+      
+      <div class="lesson-actions">
+        <button class="btn btn-primary" (click)="toggleVideoComponent()" *ngIf="lesson.animation3dUrl && !showVideoComponent">
+          📷 Show Webcam
+        </button>
+        <button class="btn btn-secondary" (click)="toggleVideoComponent()" *ngIf="showVideoComponent">
+          ❌ Hide Webcam
+        </button>
+      </div>
     </div>
-
+    
+    <!-- Video Section Second -->
+    <div class="lesson-media" *ngIf="lesson.videoUrl">
+      <div class="video-section">
+        <h3>🎥 Video Content</h3>
+        <video [src]="sanitizeResourceUrl(lesson.videoUrl)" controls width="100%"></video>
+      </div>
+    </div>
+    
+    <!-- Description Third -->
     <div class="lesson-description" *ngIf="lesson.description">
-      <h2>Description</h2>
       <div class="processed-content" [innerHTML]="processedDescription"></div>
     </div>
 
@@ -23,16 +38,10 @@
       <div class="processed-content" [innerHTML]="processedContentDescription" *ngIf="lesson.contentDescription"></div>
     </div>
 
-    <div class="lesson-media" *ngIf="lesson.videoUrl || lesson.animation3dUrl">
-      <div class="video-section" *ngIf="lesson.videoUrl">
-        <h3>Video Content</h3>
-        <video [src]="lesson.videoUrl" controls width="100%"></video>
-      </div>
-
-      <div class="animation-section" *ngIf="lesson.animation3dUrl">
-        <h3>3D Animation</h3>
-        <iframe [src]="lesson.animation3dUrl" width="100%" height="400px"></iframe>
-      </div>
+    <!-- 3D Animation component last (hidden since it doesn't exist yet) -->
+    <div class="animation-section" *ngIf="lesson.animation3dUrl" style="display: none;">
+      <h3>🎮 3D Animation</h3>
+      <app-video *ngIf="showVideoComponent" [videoUrl]="lesson.animation3dUrl" [lessonId]="lesson.id"></app-video>
     </div>
   </div>
 
@@ -42,6 +51,6 @@
 
   <div class="error" *ngIf="error">
     <p>{{ error }}</p>
-    <button class="btn btn-primary" (click)="loadCourseLesson(lesson?.id || 0)">Retry</button>
+    <button class="btn btn-primary" (click)="loadCourseLesson(lesson?.id || 0)" *ngIf="!error.includes('expired') && !error.includes('access time has expired')">Retry</button>
   </div>
 </div>

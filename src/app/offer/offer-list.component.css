@@ -96,7 +96,7 @@
 }
 
 .btn-primary:hover {
-  background-color: adjust-color(#22C55E, $lightness: -10%);
+  background-color: #1a9e4c;
 }
 
 .btn-secondary {
@@ -115,7 +115,7 @@
 }
 
 .btn-secondary:hover {
-  background-color: adjust-color(#1FA2FF, $lightness: -10%);
+  background-color: #0a8bff;
 }
 
 .btn-danger {
@@ -134,7 +134,7 @@
 }
 
 .btn-danger:hover {
-  background-color: adjust-color(#F59E0B, $lightness: -10%);
+  background-color: #e08a0a;
 }
 
 .purchase-btn {
@@ -215,5 +215,99 @@
   .btn {
     padding: 10px 15px;
     font-size: 0.9rem;
+  }
+}
+
+/* User Offers Section */
+.user-offers-section {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.user-offers-section h3 {
+  margin-bottom: 20px;
+  color: #1e40af;
+  font-size: 1.5rem;
+}
+
+.user-offers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.user-offer-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #3b82f6;
+}
+
+.user-offer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.user-offer-header h4 {
+  margin: 0;
+  color: #374151;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-pending {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.status-approved {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-rejected {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.user-offer-details {
+  margin-bottom: 15px;
+}
+
+.user-offer-details p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.user-offer-actions {
+  text-align: center;
+}
+
+.user-offer-actions .btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
+/* Responsive for user offers */
+@media (max-width: 768px) {
+  .user-offers-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-offers-section {
+    margin-top: 30px;
   }
 }

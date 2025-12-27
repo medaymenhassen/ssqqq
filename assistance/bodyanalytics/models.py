@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser, User
 from django.utils import timezone
 
 
@@ -677,3 +677,118 @@ class HandData(models.Model):
 
     def __str__(self):
         return f"{self.hand} Hand - {self.gesture} - Movement {self.movement_record.id}"
+
+
+class Offer(models.Model):
+    """Model representing offers for courses/lessons - matches Spring Boot entity"""
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255, null=False)
+    description = models.CharField(max_length=1000, null=True)  # Matches Spring Boot length
+    price = models.FloatField(null=False)  # Matches Spring Boot Double type
+    duration_hours = models.IntegerField(null=False)  # Matches Spring Boot Integer type
+    user_type_id = models.BigIntegerField(null=True)  # Matches Spring Boot Long type
+    is_active = models.BooleanField(null=False, default=True)
+    created_at = models.DateTimeField(null=False)
+    updated_at = models.DateTimeField(null=True)
+
+    def save(self, *args, **kwargs):
+        """Override save to update updated_at field"""
+        if not self.id:  # If new record
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        db_table = 'offers'  # Match Spring Boot table name
+        verbose_name = 'Offer'
+        verbose_name_plural = 'Offers'
+
+
+class UserOffer(models.Model):
+    """Model representing user's offer purchases - matches Spring Boot entity"""
+    APPROVAL_STATUS_CHOICES = [
+        ('PENDING', 'PENDING'),
+        ('APPROVED', 'APPROVED'),
+        ('REJECTED', 'REJECTED'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    user_id = models.BigIntegerField(null=False)  # Direct field to match Spring Boot foreign key
+    offer_id = models.BigIntegerField(null=False)  # Direct field to match Spring Boot foreign key
+    purchase_date = models.DateTimeField(null=False)
+    expiration_date = models.DateTimeField(null=False)
+    is_active = models.BooleanField(null=False, default=True)
+    approval_status = models.CharField(max_length=255, null=False, choices=APPROVAL_STATUS_CHOICES, default='PENDING')  # Matches Spring Boot enum as string
+    created_at = models.DateTimeField(null=False)
+    updated_at = models.DateTimeField(null=True)
+
+    def save(self, *args, **kwargs):
+        """Override save to update updated_at field"""
+        if not self.id:  # If new record
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"UserOffer {self.id} - User ID {self.user_id} - Offer ID {self.offer_id} ({self.approval_status})"
+
+    class Meta:
+        db_table = 'user_offers'  # Match Spring Boot table name
+        verbose_name = 'User Offer'
+        verbose_name_plural = 'User Offers'
+
+
+class SpringBootUser(models.Model):
+    """Model representing users from Spring Boot application"""
+    ROLE_CHOICES = [
+        ('USER', 'User'),
+        ('ADMIN', 'Admin'),
+    ]
+    
+    # Core user fields
+    email = models.EmailField(unique=True)
+    firstname = models.CharField(max_length=255)
+    lastname = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)  # Hashed password
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='USER')
+    
+    # Account status fields
+    enabled = models.BooleanField(default=True)
+    account_non_expired = models.BooleanField(default=True)
+    account_non_locked = models.BooleanField(default=True)
+    credentials_non_expired = models.BooleanField(default=True)
+    
+    # Additional fields
+    is_blocked = models.BooleanField(default=False)
+    blocked_reason = models.CharField(max_length=500, blank=True, null=True)
+    rgpd_accepted = models.BooleanField(default=False)
+    rgpd_accepted_at = models.DateTimeField(blank=True, null=True)
+    ccpa_accepted = models.BooleanField(default=False)
+    ccpa_accepted_at = models.DateTimeField(blank=True, null=True)
+    commercial_use_consent = models.BooleanField(default=False)
+    commercial_use_consent_at = models.DateTimeField(blank=True, null=True)
+    user_type_id = models.BigIntegerField(blank=True, null=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    
+    class Meta:
+        db_table = 'users'  # Use the same table name as Spring Boot
+        verbose_name = 'Spring Boot User'
+        verbose_name_plural = 'Spring Boot Users'
+    
+    def __str__(self):
+        return f"{self.firstname} {self.lastname} ({self.email})"
+    
+    @property
+    def username(self):
+        return self.email
+    
+    @property
+    def is_active(self):
+        return self.enabled
+

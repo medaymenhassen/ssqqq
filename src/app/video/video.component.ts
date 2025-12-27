@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { VideoService, BodyAnalysis } from '../video.service';
 import { AuthService, User } from '../auth.service';
@@ -60,7 +60,13 @@ export class VideoComponent implements OnInit, OnDestroy {
   public poseDataHistory: PoseDataHistory[] = [];
   public faceDataHistory: FaceDataHistory[] = [];
   public handsDataHistory: HandsDataHistory[] = [];
-
+  
+  // For periodic data sending
+  private dataSendInterval: any;
+  private lastMovementDetection: { timestamp: number, type: string } | null = null;
+  private capturedImagesForSend: string[] = [];
+  private lastCaptureTime: number = 0;
+  
   // For temporary video creation
   public temporaryVideoBlob: Blob | null = null;
   private temporaryVideoUrl: string | null = null;
@@ -71,6 +77,13 @@ export class VideoComponent implements OnInit, OnDestroy {
   public selectedVideoFile: File | null = null;
   public isProcessingVideo = false;
   public storedVideoUrl: string | null = null;
+  
+  @Input() videoUrl: string | null = null;
+  @Input() lessonId: number | null | undefined = null;
+  
+  // For image capture functionality
+  capturedImages: string[] = [];
+  private imageCaptureInterval: any;
   
   // For image file upload
   public selectedImageFile: File | null = null;
@@ -90,15 +103,37 @@ export class VideoComponent implements OnInit, OnDestroy {
     this.setupBodyAnalysisSubscription();
   }
 
-  ngOnDestroy(): void {
-    this.stopCamera();
-    this.videoService.dispose();
+ngOnDestroy(): void {
+  this.stopCamera();
+  this.stopDataSending();
+  
+  // Optionnel: appeler dispose() s'il existe
+  if (this.videoService && typeof (this.videoService as any).dispose === 'function') {
+    (this.videoService as any).dispose();
   }
+}
 
   private loadCurrentUser(): void {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser) {
       this.userId = currentUser.id;
+      console.log('✅ User ID loaded in video component:', this.userId);
+      // Start data sending if camera is already active
+      if (this.isTracking) {
+        this.startDataSending();
+      }
+    } else {
+      // If user is not available, try to get it from the observable
+      this.authService.currentUser.subscribe(user => {
+        if (user) {
+          this.userId = user.id;
+          console.log('✅ User ID loaded from observable:', this.userId);
+          // Start data sending if camera is already active
+          if (this.isTracking) {
+            this.startDataSending();
+          }
+        }
+      });
     }
   }
 
@@ -107,13 +142,15 @@ export class VideoComponent implements OnInit, OnDestroy {
       this.bodyAnalysis = analysis;
       if (analysis.isAnalyzing) {
         this.collectMovementData(Date.now());
+        // Also detect movements and capture images when movement is detected
+        this.detectMovementAndCapture();
       }
     });
   }
 
   async startCamera(): Promise<void> {
     if (this.isTracking) {
-      return;
+      return Promise.resolve();
     }
 
     try {
@@ -136,13 +173,211 @@ export class VideoComponent implements OnInit, OnDestroy {
 
         // Start recording the video stream
         this.startRecording();
+        
+        // Start image capture
+        this.startImageCapture();
+        
+        // Load current user and start periodic data sending
+        this.loadCurrentUser();
       }
     } catch (error) {
       this.errorMessage = 'Failed to start camera: ' + (error as Error).message;
       this.isTracking = false;
     }
   }
+  
+  // Override stopCamera to also stop data sending
+  stopCamera(): void {
+    this.isTracking = false;
 
+    this.analysisEndTime = Date.now();
+
+    // Stop recording
+    this.stopRecording();
+
+    // Stop image capture interval
+    this.stopImageCapture();
+
+    // Stop data sending
+    this.stopDataSending();
+
+    // Create video from CSV data
+    this.createVideoFromPoseCSV();
+
+    // Upload all CSV data to backend
+    this.uploadAllCSV();
+
+    this.sendCapturedDataToBackends();
+
+    // Store the analyzed video
+    this.storeAnalyzedVideo();
+
+    // Stop all tracks
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => {
+        track.stop();
+      });
+      this.stream = null;
+    }
+
+    // Also stop the MediaPipe camera
+    if (this.videoService) {
+      this.videoService.dispose();
+    }
+  }
+  
+  private startDataSending(): void {
+    // Clear any existing interval
+    this.stopDataSending();
+    
+    // Start sending detailed data every 5 seconds as requested
+    this.dataSendInterval = setInterval(() => {
+      // Check authentication status
+      const currentUser = this.authService.getCurrentUser();
+      
+      // Only send data if user ID is available
+      if (this.userId) {
+
+        this.sendMovementData();
+      } else {
+        console.warn('❌ User ID not available, skipping data send');
+        // Try to reload user if not available
+        this.loadCurrentUser();
+      }
+    }, 5000); // Every 5 seconds
+  }
+  
+  private stopDataSending(): void {
+    if (this.dataSendInterval) {
+      clearInterval(this.dataSendInterval);
+      this.dataSendInterval = null;
+    }
+  }
+  
+  private sendMovementDataToBackend(): void {
+    if (!this.userId) {
+      console.error('No user ID available for data sending');
+      return;
+    }
+    
+    // Check if there has been any movement detection in the last period
+    if (this.lastMovementDetection) {
+      // Format the data as "date-userid-movement_type"
+      const dateStr = new Date().toLocaleDateString('fr-FR'); // Format: 26/12/2026
+      const dataLabel = `${dateStr}-${this.userId}-${this.lastMovementDetection.type}`;
+      
+      // Only send if we have images to send
+      if (this.capturedImagesForSend.length > 0) {
+        // Prepare the data to send
+        const movementData = {
+          user: this.userId,
+          label: dataLabel,
+          movementType: this.lastMovementDetection.type,
+          timestamp: this.lastMovementDetection.timestamp,
+          images: this.capturedImagesForSend // Send captured images
+        };
+        
+        // Send to Django backend
+        this.documentService.uploadMovementData(movementData).subscribe({
+          next: (response) => {
+            console.log('Movement data sent successfully:', response);
+            // Clear the captured images after successful sending
+            this.capturedImagesForSend = [];
+            this.lastMovementDetection = null;
+          },
+          error: (error) => {
+            console.error('Error sending movement data:', error);
+            // Don't clear images on error so they can be retried
+            this.lastMovementDetection = null; // But clear detection so it doesn't keep trying
+          }
+        });
+      } else {
+        // If there was movement detection but no images, still clear the detection
+        this.lastMovementDetection = null;
+      }
+    }
+  }
+  private sendMovementData(): void {
+    // Vérifier que nous avons des images et des données
+    if (this.capturedImagesForSend.length === 0 || !this.userId) {
+
+      return;
+    }
+    
+
+    
+    // Format the data as "date-userid-movement_type"
+    const dateStr = new Date().toLocaleDateString('fr-FR'); // Format: 26/12/2026
+    const dataLabel = `${dateStr}-${this.userId}-active_capture`;
+    
+    // Prepare the data to send
+    const movementDataToSend = {
+      user: this.userId,
+      label: dataLabel,
+      movementType: 'active_capture',
+      timestamp: Date.now(),
+      images: this.capturedImagesForSend // Send captured images
+    };
+    
+
+    
+    // Send to Django backend via document service (the only service that handles this)
+    this.documentService.uploadMovementData(movementDataToSend).subscribe({
+      next: (response) => {
+        console.log('✅ Images envoyées avec succès:', response);
+        // Clear the captured images after successful sending
+        this.capturedImagesForSend = [];
+
+      },
+      error: (error) => {
+        console.error('❌ Erreur lors de l\'envoi des images:', error);
+        // Check if it's a 401 error - this might mean the token is not valid for Django
+        if (error.status === 401) {
+          console.warn('⚠️ 401 Unauthorized - token may not be valid for Django backend');
+          // Don't clear images on 401 error so they can be retried
+        } else {
+          // Don't clear images on other errors so they can be retried
+        }
+      }
+    });
+  }
+
+  
+  private detectMovementAndCapture(): void {
+    // Check if there's significant movement detected
+    // This could be based on pose confidence changes, hand movements, etc.
+    
+    // Example: Check if hands are in a victory pose
+    if (this.bodyAnalysis?.hands?.left?.gesture === 'VICTORY' || 
+        this.bodyAnalysis?.hands?.right?.gesture === 'VICTORY') {
+      
+      const timestamp = Date.now();
+      this.lastMovementDetection = { timestamp, type: 'VICTORY' };
+      
+      // Don't duplicate image capture - use the already captured images
+      // The image is already captured by the regular capture interval
+    }
+    
+    // Add other movement detection logic as needed
+    // Example: Check for other gestures or pose changes
+    if (this.bodyAnalysis?.hands?.left?.gesture === 'THUMBS_UP' || 
+        this.bodyAnalysis?.hands?.right?.gesture === 'THUMBS_UP') {
+      
+      const timestamp = Date.now();
+      this.lastMovementDetection = { timestamp, type: 'THUMBS_UP' };
+      
+      // Don't duplicate image capture - use the already captured images
+      // The image is already captured by the regular capture interval
+    }
+    
+    // Additional movement detection: head movement, pose changes, etc.
+    if (this.bodyAnalysis?.pose) {
+      // Example: detect significant pose changes or head movements
+      const pose = this.bodyAnalysis.pose;
+      // Add more sophisticated movement detection here if needed
+    }
+  }
+  
   private startRecording(): void {
     if (!this.stream) {
       return;
@@ -476,7 +711,7 @@ export class VideoComponent implements OnInit, OnDestroy {
 
   // Create video locally when backend is not available
   private createVideoLocally(csvContent: string, videoName: string): void {
-    alert('Le backend n\'est pas disponible. La vidéo sera créée localement.');
+    console.log('Le backend n\'est pas disponible. La vidéo sera créée localement.');
     
     // In a real implementation, we would convert the CSV data to a video locally
     // For now, we'll just create a placeholder video
@@ -485,19 +720,11 @@ export class VideoComponent implements OnInit, OnDestroy {
     this.storedVideoUrl = videoUrl;
     this.temporaryVideoUrl = videoUrl;
     
-    // Create and download the CSV file for user to use with backend later
+    // Don't automatically download CSV file - store for later use if needed
+    // Create and store the CSV content for potential manual download
     const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const csvUrl = URL.createObjectURL(csvBlob);
-    const a = document.createElement('a');
-    a.href = csvUrl;
-    a.download = `movement-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(csvUrl);
-    }, 100);
+    this.temporaryVideoUrl = csvUrl; // Store for potential manual download
     
 
   }
@@ -881,25 +1108,14 @@ export class VideoComponent implements OnInit, OnDestroy {
       handsData: this.handsDataHistory
     };
     
-    // Store in localStorage
-    const dataStr = JSON.stringify(localData);
-    localStorage.setItem('movementData', dataStr);
+    // Store in localStorage only if in browser environment
+    if (typeof localStorage !== 'undefined') {
+      const dataStr = JSON.stringify(localData);
+      localStorage.setItem('movementData', dataStr);
+    }
     
-
-    
-    // Also create a downloadable file
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `movement-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+    // Don't automatically download JSON file - user can manually download if needed
+    console.log('Movement data stored locally for later upload');
   }
 
   // ========== MÉTHODES MANQUANTES POUR LE TEMPLATE ==========
@@ -908,7 +1124,118 @@ export class VideoComponent implements OnInit, OnDestroy {
   toggleCsvDropdown(): void {
     this.isCsvDropdownOpen = !this.isCsvDropdownOpen;
   }
+  
+  // Send test image from webcam to Django backend
+  sendTestImageToDjango(): void {
+    if (!this.videoElement || !this.videoElement.nativeElement) {
+      console.error('Video element not available');
+      return;
+    }
+    
+    const video = this.videoElement.nativeElement;
+    
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+      console.error('Video not ready for capture');
+      return;
+    }
+    
+    // Create canvas to capture image
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert to data URL
+      const imageData = canvas.toDataURL('image/png');
+      
+      // Convert data URL to Blob
+      fetch(imageData)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], `test-image-${Date.now()}.png`, { type: 'image/png' });
+          
+          // Send to Django backend
+          if (this.userId) {
+            this.documentService.uploadDocumentForLessonOrAnalysis(this.userId, 'test_image', file).subscribe({
+              next: (response) => {
+                console.log('Test image sent to Django successfully:', response);
+              },
+              error: (error) => {
+                console.error('Error sending test image to Django:', error);
+              }
+            });
+          } else {
+            console.error('User ID not available for sending test image');
+          }
+        })
+        .catch(error => {
+          console.error('Error converting image to blob:', error);
+        });
+    }
+  }
 
+  private startImageCapture(): void {
+    // Clear any existing interval
+    this.stopImageCapture();
+    
+    // Start capturing images every 3 seconds (more frequent but optimized)
+    this.imageCaptureInterval = setInterval(() => {
+      const currentTime = Date.now();
+      // Only capture if at least 1 second has passed since last capture to prevent overwhelming
+      if (currentTime - this.lastCaptureTime < 1000) {
+        return; // Skip capture if too frequent
+      }
+      
+      this.lastCaptureTime = currentTime;
+      
+      if (this.videoElement && this.videoElement.nativeElement) {
+        const video = this.videoElement.nativeElement;
+        
+        // Ensure video is ready and has valid dimensions
+        if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.min(video.videoWidth, 320); // Reduce size to optimize
+          canvas.height = Math.min(video.videoHeight, 240);
+          
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to data URL with JPEG format for smaller size
+            const imageData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality
+            this.capturedImages.push(imageData);
+            
+            // Keep only the last 5 images to prevent memory issues
+            if (this.capturedImages.length > 5) {
+              this.capturedImages.shift();
+            }
+            
+            // Also add to the movement-specific capture array
+            this.capturedImagesForSend.push(imageData);
+
+            
+            // Keep only the last 3 images in the send array to prevent memory issues
+            if (this.capturedImagesForSend.length > 3) {
+              this.capturedImagesForSend.shift();
+
+            }
+          }
+        } else {
+          console.log('Video not ready for capture, readyState:', video.readyState, 'width:', video.videoWidth);
+        }
+      }
+    }, 3000); // Capture every 3 seconds
+  }
+
+  private stopImageCapture(): void {
+    if (this.imageCaptureInterval) {
+      clearInterval(this.imageCaptureInterval);
+      this.imageCaptureInterval = null;
+    }
+  }
 
 
   // Get pose confidence
@@ -1164,37 +1491,4 @@ export class VideoComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Override stopCamera to also store the analyzed video
-  stopCamera(): void {
-    this.isTracking = false;
-
-    this.analysisEndTime = Date.now();
-
-    // Stop recording
-    this.stopRecording();
-
-    // Create video from CSV data
-    this.createVideoFromPoseCSV();
-
-    // Upload all CSV data to backend
-    this.uploadAllCSV();
-
-    this.sendCapturedDataToBackends();
-
-    // Store the analyzed video
-    this.storeAnalyzedVideo();
-
-    // Stop all tracks
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => {
-        track.stop();
-      });
-      this.stream = null;
-    }
-
-    // Also stop the MediaPipe camera
-    if (this.videoService) {
-      this.videoService.dispose();
-    }
-  }
 }

@@ -3,6 +3,7 @@ com\auth\model\Data.class
 com\auth\model\UserTypeDefinitionBackup.class
 com\auth\service\OfferService.class
 com\auth\dto\LogoutRequest.class
+com\auth\exception\GlobalExceptionHandler.class
 com\auth\model\Offer.class
 com\auth\repository\ChatConversationRepository.class
 com\cognitiex\dto\SubUserResponse.class
@@ -53,7 +54,9 @@ com\auth\util\TestPasswordHash.class
 com\auth\model\ServiceRequest$ServiceStatus.class
 com\auth\repository\UserRepository.class
 com\auth\model\CompanyCalendar.class
+com\auth\exception\GlobalExceptionHandler$ErrorResponse.class
 com\auth\model\Course.class
+com\auth\util\CreateAdminUser.class
 com\auth\SchoolApplication.class
 com\auth\model\UserOffer.class
 com\auth\repository\CompanyCalendarRepository.class

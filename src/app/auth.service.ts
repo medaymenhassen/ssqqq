@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError, timeout, of } from 'rxjs';
-import { catchError, map, retry } from 'rxjs/operators';
+import { catchError, map, retry, tap, switchMap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from '../environments/environment';
 
@@ -101,19 +101,19 @@ export class AuthService {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, loginRequest)
       .pipe(
         map((response: LoginResponse) => {
-          
           if (typeof window !== 'undefined') {
             localStorage.setItem('accessToken', response.accessToken);
             
             // ✅ Si refreshToken absent, utilise accessToken comme fallback
             const refreshToken = response.refreshToken || response.accessToken;
             localStorage.setItem('refreshToken', refreshToken);
-            
-
           }
 
-          // Load user profile after login
-          this.loadCurrentUser(0);
+          // Load user profile after login with a slight delay to ensure tokens are stored
+          setTimeout(() => {
+            this.loadCurrentUser(0);
+          }, 100);
+          
           return response;
         }),
         catchError(this.handleError)
@@ -143,6 +143,8 @@ export class AuthService {
 
     // ✅ Pas de token? Rien à faire
     if (!token) {
+      // Clear current user if no token
+      this.currentUserSubject.next(null);
       return;
     }
 
@@ -174,14 +176,23 @@ export class AuthService {
             if (error.status === 401 || error.status === 403) {
 
               if (retryCount < 2) {
-                this.refreshToken().subscribe({
-                  next: (response: LoginResponse) => {
+                return this.refreshToken().pipe(
+                  switchMap((response: LoginResponse) => {
+                    // Update tokens after refresh
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('accessToken', response.accessToken);
+                      const refreshToken = response.refreshToken || response.accessToken;
+                      localStorage.setItem('refreshToken', refreshToken);
+                    }
+                    // Retry loading user with new token
                     this.loadCurrentUser(retryCount + 1);
-                  },
-                  error: (refreshError: any) => {
+                    return of(null);
+                  }),
+                  catchError((refreshError: any) => {
                     this.logout();
-                  }
-                });
+                    return of(null);
+                  })
+                );
               }
 
               // ✅ Return empty observable to prevent unhandled rejection
@@ -202,18 +213,26 @@ export class AuthService {
             return of(null);
           })
         )
-        .subscribe({
-          next: (user: User | null) => {
-            if (user) {
-              this.currentUserSubject.next(user);
+        .subscribe(
+          {
+            next: (user: User | null) => {
+              if (user) {
+                this.currentUserSubject.next(user);
+              } else {
+                // If no user returned, clear the current user
+                this.currentUserSubject.next(null);
+              }
+            },
+            error: (err: any) => {
+              // On error, clear current user
+              this.currentUserSubject.next(null);
             }
-          },
-          error: (err: any) => {
           }
-        });
+        );
 
     } catch (error) {
       // Token decoding failed, likely invalid token
+      this.currentUserSubject.next(null);
     }
   }
 

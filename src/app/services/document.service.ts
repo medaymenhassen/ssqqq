@@ -100,4 +100,57 @@ export class DocumentService {
       headers: headers
     });
   }
+  
+  // Upload movement data with images to Django backend
+  uploadMovementData(movementData: any): Observable<any> {
+    const formData = new FormData();
+    
+    // Add the movement data
+    formData.append('user', movementData.user.toString());
+    formData.append('label', movementData.label);
+    formData.append('movementType', movementData.movementType);
+    formData.append('timestamp', movementData.timestamp.toString());
+    
+    // Add images if they exist
+    if (movementData.images && movementData.images.length > 0) {
+
+      movementData.images.forEach((image: string, index: number) => {
+        // Convert data URL to Blob
+        const blob = this.dataURLToBlob(image);
+        formData.append(`images`, blob, `movement_${Date.now()}_${index}.png`);
+      });
+    } else {
+
+    }
+    
+    // For Django backend, we don't need authentication headers
+    // The auth interceptor is configured to skip Django requests
+    // Create headers without Content-Type for multipart/form-data
+    const headers = new HttpHeaders(); // No auth headers for Django
+    
+
+    
+    // Send to Django backend using environment configuration
+    const request = this.http.post(`${environment.aiApiUrl}/movements/upload/`, formData, {
+      headers: headers
+    });
+    
+    return request;
+  }
+  
+  // Helper method to convert data URL to Blob
+  private dataURLToBlob(dataURL: string): Blob {
+    const arr = dataURL.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    
+    return new Blob([u8arr], { type: mime });
+  }
 }

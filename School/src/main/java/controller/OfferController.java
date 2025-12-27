@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import com.auth.model.User;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/offers")
@@ -74,17 +75,21 @@ public class OfferController {
     // Purchase an offer
     @PostMapping("/{offerId}/purchase")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<?> purchaseOffer(@PathVariable Long offerId) {
+    public ResponseEntity<Object> purchaseOffer(@PathVariable Long offerId) {
         try {
             // Get the authenticated user from security context
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("error", "User not authenticated"));
+            }
             String email = authentication.getName();
             
             // Use the email to purchase the offer directly
             UserOffer userOffer = offerService.purchaseOfferByEmail(email, offerId);
             return ResponseEntity.ok(userOffer);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Could not purchase offer: " + e.getMessage());
+            // Always return JSON object, not string
+            return ResponseEntity.badRequest().body(Map.of("error", "Could not purchase offer: " + e.getMessage()));
         }
     }
     
@@ -98,36 +103,99 @@ public class OfferController {
     // Get user's pending offers (awaiting admin approval)
     @GetMapping("/user/{userId}/pending")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<List<UserOffer>> getUserPendingOffers(@PathVariable Long userId) {
+    public ResponseEntity<Object> getUserPendingOffers(@PathVariable Long userId) {
         try {
+            // Verify authentication and user context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("error", "User not authenticated"));
+            }
+            
+            String email = authentication.getName();
+            User authenticatedUser = offerService.getUserByEmail(email);
+            
+            // Check if user is admin or requesting their own data
+            boolean isAdmin = authentication.getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+            
+            if (!authenticatedUser.getId().equals(userId) && !isAdmin) {
+                return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied: Cannot view other users' offers"));
+            }
+            
             List<UserOffer> userOffers = offerService.getUserPendingOffers(userId);
             return ResponseEntity.ok(userOffers);
+            
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404)
+                .body(Map.of("error", "User not found: " + e.getMessage()));
         }
     }
     
     // Get user's approved offers
     @GetMapping("/user/{userId}/approved")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<List<UserOffer>> getUserApprovedOffers(@PathVariable Long userId) {
+    public ResponseEntity<Object> getUserApprovedOffers(@PathVariable Long userId) {
         try {
+            // Verify authentication and user context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("error", "User not authenticated"));
+            }
+            
+            String email = authentication.getName();
+            User authenticatedUser = offerService.getUserByEmail(email);
+            
+            // Check if user is admin or requesting their own data
+            boolean isAdmin = authentication.getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+            
+            if (!authenticatedUser.getId().equals(userId) && !isAdmin) {
+                return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied: Cannot view other users' offers"));
+            }
+            
             List<UserOffer> userOffers = offerService.getUserApprovedOffers(userId);
             return ResponseEntity.ok(userOffers);
+            
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404)
+                .body(Map.of("error", "User not found: " + e.getMessage()));
         }
     }
     
     // Get user's rejected offers
     @GetMapping("/user/{userId}/rejected")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<List<UserOffer>> getUserRejectedOffers(@PathVariable Long userId) {
+    public ResponseEntity<Object> getUserRejectedOffers(@PathVariable Long userId) {
         try {
+            // Verify authentication and user context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("error", "User not authenticated"));
+            }
+            
+            String email = authentication.getName();
+            User authenticatedUser = offerService.getUserByEmail(email);
+            
+            // Check if user is admin or requesting their own data
+            boolean isAdmin = authentication.getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+            
+            if (!authenticatedUser.getId().equals(userId) && !isAdmin) {
+                return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied: Cannot view other users' offers"));
+            }
+            
             List<UserOffer> userOffers = offerService.getUserRejectedOffers(userId);
             return ResponseEntity.ok(userOffers);
+            
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404)
+                .body(Map.of("error", "User not found: " + e.getMessage()));
         }
     }
     
@@ -157,12 +225,90 @@ public class OfferController {
     
     // Get user's purchased offers
     @GetMapping("/user/{userId}/purchases")
-    public ResponseEntity<List<UserOffer>> getUserPurchasedOffers(@PathVariable Long userId) {
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Object> getUserPurchasedOffers(@PathVariable Long userId) {
         try {
+            // Verify authentication and user context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("error", "User not authenticated"));
+            }
+            
+            String email = authentication.getName();
+            User authenticatedUser = offerService.getUserByEmail(email);
+            
+            // Check if user is admin or requesting their own data
+            boolean isAdmin = authentication.getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+            
+            if (!authenticatedUser.getId().equals(userId) && !isAdmin) {
+                return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied: Cannot view other users' offers"));
+            }
+            
             List<UserOffer> userOffers = offerService.getUserPurchasedOffers(userId);
             return ResponseEntity.ok(userOffers);
+            
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404)
+                .body(Map.of("error", "User not found: " + e.getMessage()));
+        }
+    }
+    
+    // Track lesson time for a user
+    @PostMapping("/user/{userId}/track-lesson/{lessonId}")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Object> trackLessonTime(@PathVariable Long userId, @PathVariable Long lessonId) {
+        try {
+            // Get the authenticated user from security context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("error", "User not authenticated"));
+            }
+            String email = authentication.getName();
+            
+            // Verify that the authenticated user matches the requested userId
+            User authenticatedUser = offerService.getUserByEmail(email);
+            if (authenticatedUser == null || !authenticatedUser.getId().equals(userId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+            }
+            
+            // Track lesson time and deduct from user's offer
+            boolean success = offerService.trackLessonTime(userId, lessonId);
+            if (success) {
+                return ResponseEntity.ok(Map.of("message", "Lesson time tracked successfully"));
+            } else {
+                return ResponseEntity.status(400).body(Map.of("error", "Failed to track lesson time"));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Could not track lesson time: " + e.getMessage()));
+        }
+    }
+    
+    // Get user's remaining time
+    @GetMapping("/user/{userId}/remaining-time")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Object> getUserRemainingTime(@PathVariable Long userId) {
+        try {
+            // Get the authenticated user from security context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("error", "User not authenticated"));
+            }
+            String email = authentication.getName();
+            
+            // Verify that the authenticated user matches the requested userId
+            User authenticatedUser = offerService.getUserByEmail(email);
+            if (authenticatedUser == null || !authenticatedUser.getId().equals(userId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+            }
+            
+            // Get remaining time in minutes
+            long remainingMinutes = offerService.getUserRemainingMinutes(userId);
+            return ResponseEntity.ok(Map.of("remainingMinutes", remainingMinutes));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Could not get remaining time: " + e.getMessage()));
         }
     }
 }

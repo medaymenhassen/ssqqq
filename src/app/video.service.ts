@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 // Modern MediaPipe Tasks API
@@ -91,8 +92,13 @@ export class VideoService {
   private handDetector: HandLandmarker | null = null;
   private mpCamera: Camera | null = null;
   private kalidokit = Kalidokit;
-
-  constructor() {}
+    
+  constructor(
+    private http: HttpClient  // ← S'assurer que c'est injecté
+  ) {}
+  
+  // Et cette propriété:
+  private aiUrl = 'http://localhost:8000/ai';
 
   async initializeMediaPipe(): Promise<void> {
     

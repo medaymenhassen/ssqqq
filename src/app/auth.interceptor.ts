@@ -7,25 +7,33 @@ import { AuthService } from './auth.service';
 export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> => {
   const authService = inject(AuthService);
   
-  // Get the current JWT token from storage
-  const token = authService.getAccessToken();
-
-  // If token exists, add it to the request Authorization header
-  if (token) {
-    // Clone the request and set the Authorization header
-    req = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+  // Check if this is a request to the Django backend (should not be intercepted)
+  // Django backend is accessed via /ai/ path (both in dev and prod)
+  const isDjangoBackend = req.url.includes('/ai/');
+  
+  if (!isDjangoBackend) {
+    // Get the current JWT token from storage
+    const token = authService.getAccessToken();
+    
+    // If token exists, add it to the request Authorization header
+    if (token) {
+      // Clone the request and set the Authorization header
+      req = req.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    }
   }
-
+  
   // Handle the request and catch errors
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       
-      // Handle 401 Unauthorized - Token may be expired
-      if (error.status === 401) {
+      // Only handle 401 errors for non-Django backend requests
+      const isDjangoBackendError = error.url?.includes('/ai/');
+      
+      if (error.status === 401 && !isDjangoBackendError) {
         
         // Try to refresh the token
         return authService.refreshToken().pipe(

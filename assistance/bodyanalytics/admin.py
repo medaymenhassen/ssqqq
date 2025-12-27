@@ -1,7 +1,16 @@
 from django.contrib import admin
-from .models import UserProfile, UserType, TrainingDomain, Course, CourseModule, CourseLesson, CourseTest, TestQuestion, TestAnswer, Document, Data, Registration, Location, CalendarEventType, CompanyCalendar, MeetingRequest, ServiceRequest, RefreshToken, PasswordResetToken, TokenBlacklist, UserCourseCompletion, UserModuleCompletion, UserLessonCompletion, UserTestResult, UserDomainCompletion, ChatConversation, ChatMessage, MovementRecord, PoseData, FaceData, HandData
+from .models import UserProfile, UserType, TrainingDomain, Course, CourseModule, CourseLesson, CourseTest, TestQuestion, TestAnswer, Document, Data, Registration, Location, CalendarEventType, CompanyCalendar, MeetingRequest, ServiceRequest, RefreshToken, PasswordResetToken, TokenBlacklist, UserCourseCompletion, UserModuleCompletion, UserLessonCompletion, UserTestResult, UserDomainCompletion, ChatConversation, ChatMessage, MovementRecord, PoseData, FaceData, HandData, SpringBootUser, Offer, UserOffer
 
 # Register your models here
+@admin.register(SpringBootUser)
+class SpringBootUserAdmin(admin.ModelAdmin):
+    list_display = ('firstname', 'lastname', 'email', 'role', 'enabled', 'created_at')
+    list_filter = ('role', 'enabled', 'created_at')
+    search_fields = ('firstname', 'lastname', 'email')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'firstname', 'lastname', 'role', 'enabled', 'created_at')
@@ -185,3 +194,48 @@ class HandDataAdmin(admin.ModelAdmin):
     list_display = ('id', 'movement_record', 'hand', 'gesture', 'created_at')
     list_filter = ('hand', 'gesture', 'created_at')
     search_fields = ('hand', 'gesture', 'movement_record__user__username')
+
+
+@admin.register(Offer)
+class OfferAdmin(admin.ModelAdmin):
+    list_display = ('title', 'price', 'duration_hours', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('title', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+
+@admin.register(UserOffer)
+class UserOfferAdmin(admin.ModelAdmin):
+    list_display = ('get_user_info', 'get_offer_info', 'approval_status', 'purchase_date', 'expiration_date', 'is_active')
+    list_filter = ('approval_status', 'is_active', 'purchase_date')
+    search_fields = ('user_id', 'offer_id', 'offer__title')
+    readonly_fields = ('created_at', 'updated_at', 'purchase_date')
+    
+    def get_user_info(self, obj):
+        try:
+            user = SpringBootUser.objects.get(id=obj.user_id)
+            return f"{user.firstname} {user.lastname} ({user.email})"
+        except SpringBootUser.DoesNotExist:
+            return f"User ID {obj.user_id} (Not Found)"
+    get_user_info.short_description = 'User'
+    
+    def get_offer_info(self, obj):
+        try:
+            offer = Offer.objects.get(id=obj.offer_id)
+            return f"{offer.title} (€{offer.price})"
+        except Offer.DoesNotExist:
+            return f"Offer ID {obj.offer_id} (Not Found)"
+    get_offer_info.short_description = 'Offer'
+    
+    actions = ['approve_offers', 'reject_offers']
+    
+    def approve_offers(self, request, queryset):
+        queryset.update(approval_status='APPROVED', is_active=True)
+        self.message_user(request, f'{queryset.count()} offers were successfully approved.')
+    approve_offers.short_description = "Approve selected offers"
+    
+    def reject_offers(self, request, queryset):
+        queryset.update(approval_status='REJECTED', is_active=False)
+        self.message_user(request, f'{queryset.count()} offers were successfully rejected.')
+    reject_offers.short_description = "Reject selected offers"

@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Offer, OfferService, UserOffer } from '../services/offer.service';
 import { AuthService } from '../auth.service';
+import { forkJoin, of, Subject } from 'rxjs';
+import { catchError, takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-offer-list',
@@ -11,13 +13,17 @@ import { AuthService } from '../auth.service';
   templateUrl: './offer-list.component.html',
   styleUrls: ['./offer-list.component.css']
 })
-export class OfferListComponent implements OnInit {
+export class OfferListComponent implements OnInit, OnDestroy {
   offers: Offer[] = [];
   loading = false;
   error: string | null = null;
   isPurchasing = false;
   userId: number | null = null;
-  userOfferStatuses: Map<number, string> = new Map(); // Maps offerId to status (PURCHASED, PENDING, APPROVED, REJECTED)
+  userOfferStatuses: Map<number, string> = new Map();
+  userOffers: UserOffer[] = [];
+  userOffersLoading = false;
+
+  private destroy$ = new Subject<void>();
 
   constructor(
     private offerService: OfferService,
@@ -26,112 +32,300 @@ export class OfferListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // ✅ DEBUG: Vérifier le token
+    const token = localStorage.getItem('accessToken');
+    const user = this.authService.getCurrentUser();
+    console.log('🔍 DEBUG:', {
+      token: token ? token.substring(0, 20) + '...' : 'NO TOKEN',
+      userId: user?.id,
+      email: user?.email
+    });
+
     this.loadCurrentUser();
-    this.loadOffers();
+
+    setTimeout(() => {
+      this.loadOffers();
+      setTimeout(() => {
+        if (this.userId) this.checkUserOfferStatuses();
+      }, 1000);
+    }, 500);
+
+    // ✅ NOUVEAU: Subscribe aux changements
+    this.offerService.statusChange$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({ offerId, status }) => {
+        console.log(`✅ Status changed: ${offerId} -> ${status}`);
+        this.userOfferStatuses.set(offerId, status);
+      });
+
+    setInterval(() => {
+      if (this.userId) this.checkUserOfferStatuses();
+    }, 30000);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.userId) {
+        setTimeout(() => this.checkUserOfferStatuses(), 1000);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private loadCurrentUser(): void {
     const currentUser = this.authService.getCurrentUser();
-    if (currentUser) {
+    if (currentUser?.id) {
       this.userId = currentUser.id;
+      setTimeout(() => {
+        if (this.userId) {
+          this.checkUserOfferStatuses();
+          this.loadUserOffers();
+        }
+      }, 100);
     }
+
+    if (!this.authService.isLoggedIn()) {
+      this.authService.checkAndLoadUser();
+    }
+
+    this.authService.currentUser
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(user => {
+        if (user?.id) {
+          this.userId = user.id;
+          setTimeout(() => {
+            if (this.userId) {
+              this.checkUserOfferStatuses();
+              this.loadUserOffers();
+            }
+          }, 100);
+        }
+      });
+  }
+
+  private loadUserOffers(): void {
+    if (!this.userId) return;
+    this.userOffersLoading = true;
+
+    forkJoin({
+      pending: this.offerService.getUserPendingOffers(this.userId).pipe(catchError(() => of([]))),
+      approved: this.offerService.getUserApprovedOffers(this.userId).pipe(catchError(() => of([]))),
+      rejected: this.offerService.getUserRejectedOffers(this.userId).pipe(catchError(() => of([]))),
+      purchased: this.offerService.getUserPurchasedOffers(this.userId).pipe(catchError(() => of([])))
+    }).subscribe({
+      next: (results) => {
+        this.userOffers = [...results.pending, ...results.approved, ...results.rejected, ...results.purchased];
+        this.userOffersLoading = false;
+      },
+      error: (error) => {
+        console.error('Error:', error);
+        this.userOffersLoading = false;
+      }
+    });
   }
 
   private loadOffers(): void {
     this.loading = true;
     this.error = null;
-    
     this.offerService.getAllActiveOffers().subscribe({
       next: (offers) => {
         this.offers = offers;
         this.loading = false;
-        
-        // If user is logged in, check their offer statuses
         if (this.userId) {
           this.checkUserOfferStatuses();
+          this.loadUserOffers();
         }
       },
       error: (err) => {
-        console.error('Error loading offers:', err);
-        this.error = 'Failed to load offers. Please try again later.';
+        console.error('Error:', err);
+        this.error = 'Failed to load offers.';
         this.loading = false;
       }
     });
   }
-  
+
   private checkUserOfferStatuses(): void {
-    // Get all user's offer statuses (pending, approved, rejected)
-    this.offerService.getUserPendingOffers(this.userId!).subscribe({
-      next: (pendingOffers) => {
-        pendingOffers.forEach(userOffer => {
-          this.userOfferStatuses.set(userOffer.offerId, userOffer.approvalStatus);
-        });
-        
-        // Get approved offers
-        this.offerService.getUserApprovedOffers(this.userId!).subscribe({
-          next: (approvedOffers) => {
-            approvedOffers.forEach(userOffer => {
-              this.userOfferStatuses.set(userOffer.offerId, userOffer.approvalStatus);
-            });
-            
-            // Get rejected offers
-            this.offerService.getUserRejectedOffers(this.userId!).subscribe({
-              next: (rejectedOffers) => {
-                rejectedOffers.forEach(userOffer => {
-                  this.userOfferStatuses.set(userOffer.offerId, userOffer.approvalStatus);
-                });
-              },
-              error: (err) => {
-                console.error('Error loading rejected offers:', err);
-              }
-            });
-          },
-          error: (err) => {
-            console.error('Error loading approved offers:', err);
+    if (!this.userId) {
+      console.error('❌ userId is null!');
+      return;
+    }
+
+    console.log(`📡 Fetching offers for userId: ${this.userId}`);
+
+    const newStatuses = new Map();
+
+    forkJoin({
+      pending: this.offerService.getUserPendingOffers(this.userId).pipe(
+        catchError(err => {
+          console.error('❌ Error pending:', err);
+          return of([]);
+        })
+      ),
+      approved: this.offerService.getUserApprovedOffers(this.userId).pipe(
+        catchError(err => {
+          console.error('❌ Error approved:', err);
+          return of([]);
+        })
+      ),
+      rejected: this.offerService.getUserRejectedOffers(this.userId).pipe(
+        catchError(err => {
+          console.error('❌ Error rejected:', err);
+          return of([]);
+        })
+      ),
+      purchased: this.offerService.getUserPurchasedOffers(this.userId).pipe(
+        catchError(err => {
+          console.error('❌ Error purchased:', err);
+          return of([]);
+        })
+      )
+    }).subscribe({
+      next: (results) => {
+        console.log('✅ Offers loaded:', results);
+        [...results.pending, ...results.approved, ...results.rejected].forEach(userOffer => {
+          if (userOffer?.offerId) {
+            newStatuses.set(userOffer.offerId, userOffer.approvalStatus);
           }
         });
+
+        results.purchased.forEach(userOffer => {
+          if (userOffer?.offerId && !newStatuses.has(userOffer.offerId)) {
+            newStatuses.set(userOffer.offerId, userOffer.approvalStatus || (userOffer.isActive ? 'APPROVED' : 'REJECTED'));
+          }
+        });
+
+        this.userOfferStatuses = newStatuses;
       },
-      error: (err) => {
-        console.error('Error loading pending offers:', err);
-      }
+      error: (err) => console.error('❌ Error:', err)
     });
   }
 
   purchaseOffer(offerId: number): void {
-    if (!this.userId) {
-      this.error = 'You must be logged in to purchase offers.';
+    if (this.isButtonDisabled(offerId)) {
+      this.error = `Cannot purchase. Status: ${this.getOfferStatus(offerId).toLowerCase()}`;
       return;
     }
-    
-    this.isPurchasing = true;
-    this.error = null;
-    
-    this.offerService.purchaseOffer(offerId, this.userId).subscribe({
-      next: (userOffer) => {
-        console.log('Offer purchased successfully:', userOffer);
-        this.isPurchasing = false;
-        
-        // Update the status for this offer
-        this.userOfferStatuses.set(offerId, userOffer.approvalStatus || 'PENDING');
-        
-        if (userOffer.approvalStatus === 'APPROVED') {
-          alert('Offer purchased and approved! You now have access to course content.');
-        } else {
-          alert('Offer purchased successfully! Admin approval is pending. You will get access after approval.');
-        }
-        
-        // Reload offers to reflect the purchase
-        this.loadOffers();
-      },
-      error: (err) => {
-        console.error('Error purchasing offer:', err);
-        this.error = 'Failed to purchase offer. ' + (err.error?.message || 'Please try again later.');
-        this.isPurchasing = false;
+
+    this.authService.checkAndLoadUser();
+    const currentUser = this.authService.getCurrentUser();
+
+    setTimeout(() => {
+      if (!this.authService.isLoggedIn() || !currentUser?.id) {
+        this.error = 'You must be logged in.';
+        this.router.navigate(['/login']);
+        return;
       }
-    });
+
+      this.userId = currentUser.id;
+      this.isPurchasing = true;
+      this.error = null;
+
+      this.offerService.purchaseOffer(offerId).subscribe({
+        next: (userOffer) => {
+          this.isPurchasing = false;
+
+          // ✅ IMMÉDIAT: Mettre à jour
+          this.userOfferStatuses.set(offerId, userOffer.approvalStatus || 'PENDING');
+
+          if (userOffer.approvalStatus === 'APPROVED') {
+            alert('✅ Offer approved! You have access.');
+          } else {
+            alert('✅ Offer purchased! Waiting for admin approval.');
+          }
+
+          // ✅ DÉLAIS: Rafraîchir
+          setTimeout(() => {
+            if (this.userId) {
+              this.checkUserOfferStatuses();
+              this.loadUserOffers();
+            }
+          }, 500);
+
+          setTimeout(() => {
+            if (this.userId) {
+              this.checkUserOfferStatuses();
+              this.loadUserOffers();
+            }
+          }, 3000);
+        },
+        error: (err) => {
+          console.error('Error:', err);
+          this.isPurchasing = false;
+          if (err.status === 401 || err.status === 403) {
+            this.error = 'You must be logged in.';
+            this.authService.forceReloadUser();
+            setTimeout(() => this.router.navigate(['/login']), 1000);
+          } else {
+            this.error = 'Failed to purchase offer.';
+          }
+        }
+      });
+    }, 200);
   }
 
-  // CRUD Operations
+  getOfferStatus(offerId: number): string {
+    if (!this.userId) return 'LOADING';
+    return this.userOfferStatuses.get(offerId) || 'AVAILABLE';
+  }
+
+  getButtonText(offerId: number): string {
+    const status = this.getOfferStatus(offerId);
+    const texts: {[key: string]: string} = {
+      'LOADING': 'Loading...',
+      'PENDING': '⏳ Pending Approval',
+      'APPROVED': '✅ Access Granted',
+      'REJECTED': '❌ Offer Rejected'
+    };
+    return texts[status] || 'Purchase';
+  }
+
+  isButtonDisabled(offerId: number): boolean {
+    const status = this.getOfferStatus(offerId);
+    return status === 'LOADING' || ['PENDING', 'APPROVED', 'REJECTED'].includes(status);
+  }
+
+  getButtonClass(offerId: number): string {
+    const status = this.getOfferStatus(offerId);
+    const classes: {[key: string]: string} = {
+      'LOADING': 'btn btn-secondary',
+      'PENDING': 'btn btn-warning',
+      'APPROVED': 'btn btn-success',
+      'REJECTED': 'btn btn-danger'
+    };
+    return classes[status] || 'btn btn-primary';
+  }
+
+  forceRefresh(): void {
+    // Refresh user authentication state first
+    this.authService.forceReloadUser();
+    
+    // Small delay to ensure user is reloaded
+    setTimeout(() => {
+      this.loadCurrentUser();
+      
+      setTimeout(() => {
+        if (this.userId) {
+          // Reload offers and statuses
+          this.loadOffers();
+          
+          setTimeout(() => {
+            if (this.userId) {
+              this.checkUserOfferStatuses();
+              this.loadUserOffers(); // Reload user's offers
+            }
+          }, 500);
+        }
+      }, 500);
+    }, 500);
+  }
+  
+  goToLessons(): void {
+    this.router.navigate(['/course-lessons']);
+  }
+  
+  // Missing methods that are referenced in the template
   createOffer(): void {
     this.router.navigate(['/offers/create']);
   }
@@ -145,7 +339,6 @@ export class OfferListComponent implements OnInit {
       this.offerService.deleteOffer(offerId).subscribe({
         next: () => {
           console.log('Offer deleted successfully');
-          // Reload offers after deletion
           this.loadOffers();
         },
         error: (err) => {
@@ -156,42 +349,12 @@ export class OfferListComponent implements OnInit {
     }
   }
   
-  getOfferStatus(offerId: number): string {
-    return this.userOfferStatuses.get(offerId) || 'AVAILABLE';
-  }
-  
-  getButtonText(offerId: number): string {
-    const status = this.getOfferStatus(offerId);
-    
-    switch(status) {
-      case 'PENDING':
-        return 'Pending Approval';
-      case 'APPROVED':
-        return 'Access Granted';
-      case 'REJECTED':
-        return 'Offer Rejected';
-      default:
-        return 'Purchase';
-    }
-  }
-  
-  isButtonDisabled(offerId: number): boolean {
-    const status = this.getOfferStatus(offerId);
-    return status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED';
-  }
-  
-  getButtonClass(offerId: number): string {
-    const status = this.getOfferStatus(offerId);
-    
-    switch(status) {
-      case 'PENDING':
-        return 'btn btn-warning';
-      case 'APPROVED':
-        return 'btn btn-success';
-      case 'REJECTED':
-        return 'btn btn-danger';
-      default:
-        return 'btn btn-primary';
-    }
+  getStatusClass(status: string): string {
+    const classes: {[key: string]: string} = {
+      'PENDING': 'status-pending',
+      'APPROVED': 'status-approved', 
+      'REJECTED': 'status-rejected'
+    };
+    return classes[status] || 'status-default';
   }
 }

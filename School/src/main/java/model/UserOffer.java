@@ -1,10 +1,12 @@
 package com.auth.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_offers")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class UserOffer {
     
     @Id

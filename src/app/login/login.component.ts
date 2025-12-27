@@ -36,8 +36,8 @@ export class LoginComponent {
       this.authService.login(email, password).subscribe({
         next: (response) => {
           this.isLoading = false;
-          // Redirect to bodyanalytics page
-          this.router.navigate(['/bodyanalytics']);
+          // Redirect to offers page
+          this.router.navigate(['/offers']);
         },
         error: (error) => {
           this.isLoading = false;

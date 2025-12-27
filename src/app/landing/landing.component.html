@@ -1,4 +1,4 @@
-<div class="home-page">
+<div class="home-page">  
   <!-- Header Section -->
   <header class="header">
     <div class="container">
@@ -89,7 +89,15 @@
           <p class="offer-description">{{ offer.description }}</p>
           <div class="offer-details">
             <span class="offer-type">Offre</span>
-            <button class="buy-btn" (click)="purchaseOffer(offer.id)">Acheter</button>
+            <button 
+              class="buy-btn" 
+              [class.pending-btn]="getOfferStatus(offer.id) === 'PENDING'"
+              [class.approved-btn]="getOfferStatus(offer.id) === 'APPROVED'"
+              [class.rejected-btn]="getOfferStatus(offer.id) === 'REJECTED'"
+              (click)="purchaseOffer(offer.id)"
+              [disabled]="isButtonDisabled(offer.id)">
+              {{ getButtonText(offer.id) }}
+            </button>
           </div>
         </div>
       </div>

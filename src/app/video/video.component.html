@@ -19,7 +19,7 @@
 
   <div class="main-content">
     <section class="video-section">
-      <div class="video-upload-section" *ngIf="!isVideoInitialized">
+      <div class="video-upload-section" *ngIf="!isVideoInitialized && !videoUrl">
         <h3>📤 Charger une Vidéo</h3>
         <input type="file" (change)="onVideoFileSelected($event)" accept="video/*" />
         <button class="btn btn-primary" *ngIf="selectedVideoFile" (click)="processVideoFile()" [disabled]="isProcessingVideo">
@@ -27,19 +27,22 @@
         </button>
         <p class="upload-info">Ou utilisez la webcam ci-dessous</p>
       </div>
-      
-      <div class="image-upload-section" *ngIf="!isVideoInitialized">
+        
+      <div class="image-upload-section" *ngIf="!isVideoInitialized && !videoUrl">
         <h3>🖼️ Charger une Image</h3>
         <input type="file" (change)="onImageFileSelected($event)" accept="image/*" />
         <button class="btn btn-primary" *ngIf="selectedImageFile" (click)="processImageFile()" [disabled]="isProcessingImage">
-          {{ isProcessingImage ? 'Traitement en cours...' : 'Analyser l\'Image' }}
+          {{ isProcessingImage ? 'Traitement en cours...' : 'Analyser l'Image' }}
         </button>
         <p class="upload-info">Ou utilisez la webcam ci-dessus</p>
       </div>
       
       <div class="video-wrapper">
-        <video #videoElement class="video-stream" playsinline (play)="isVideoInitialized = true"></video>
-        <div class="fps-indicator" *ngIf="isTracking">
+        <!-- Display provided video URL if available -->
+        <video *ngIf="videoUrl" [src]="videoUrl" controls class="video-stream" width="100%" height="400px"></video>
+        <!-- Display camera video if no external URL provided -->
+        <video *ngIf="!videoUrl" #videoElement class="video-stream" playsinline (play)="isVideoInitialized = true"></video>
+        <div class="fps-indicator" *ngIf="isTracking && !videoUrl">
           <span class="fps-badge">{{ fps }} FPS</span>
           <span class="recording-dot"></span>
         </div>
@@ -49,19 +52,20 @@
       </div>
 
       <div class="video-controls">
-        <button class="btn btn-primary" *ngIf="!isVideoInitialized && !selectedVideoFile && !selectedImageFile" (click)="startCamera()">
+        <!-- Show camera controls only when no external video URL is provided -->
+        <button class="btn btn-primary" *ngIf="!videoUrl && !isVideoInitialized && !selectedVideoFile && !selectedImageFile" (click)="startCamera()">
           ▶️ Démarrer (Webcam)
         </button>
-        <button class="btn btn-secondary" *ngIf="isVideoInitialized" (click)="stopCamera()">
+        <button class="btn btn-secondary" *ngIf="!videoUrl && isVideoInitialized" (click)="stopCamera()">
           ⏹️ Arrêter
         </button>
-        <button class="btn btn-info" *ngIf="temporaryVideoBlob" (click)="downloadTemporaryVideo()">
+        <button class="btn btn-info" *ngIf="!videoUrl && temporaryVideoBlob" (click)="downloadTemporaryVideo()">
           📥 Télécharger Vidéo
         </button>
-        <button class="btn btn-success" *ngIf="temporaryVideoBlob" (click)="uploadTemporaryVideo()">
+        <button class="btn btn-success" *ngIf="!videoUrl && temporaryVideoBlob" (click)="uploadTemporaryVideo()">
           ☁️ Envoyer Vidéo
         </button>
-        <div class="dropdown" *ngIf="isVideoInitialized || selectedVideoFile" #csvDropdown>
+        <div class="dropdown" *ngIf="!videoUrl && (isVideoInitialized || selectedVideoFile)" #csvDropdown>
           <button class="btn btn-success dropdown-toggle" type="button" (click)="toggleCsvDropdown()" aria-expanded="false">
             📊 Exporter Données CSV
           </button>
@@ -159,6 +163,16 @@
       </div>
     </section>
   </div>
+
+  <!-- Display captured images -->
+  <section class="captured-images-section" *ngIf="capturedImages.length > 0">
+    <h3>📸 Images Capturées</h3>
+    <div class="captured-images-container">
+      <div class="image-item" *ngFor="let image of capturedImages; let i = index">
+        <img [src]="image" alt="Captured image {{ i + 1 }}" class="captured-image" />
+      </div>
+    </div>
+  </section>
 
   <footer class="video-footer">
     <div class="info-box">

@@ -1,154 +1,398 @@
 .lesson-detail-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #f9f9f9;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e6e9f0 100%);
   min-height: calc(100vh - 60px);
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  overflow-x: hidden;
 }
 
 .lesson-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
+  padding: 25px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-radius: 16px;
+  color: white;
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top right, rgba(255,255,255,0.2) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  .timer-display {
+    position: relative;
+    z-index: 2;
+    
+    h3 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 35px;
+      display: inline-flex;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      
+      &::before {
+        content: "⏱️ ";
+        margin-right: 10px;
+        font-size: 1.2rem;
+      }
+    }
+  }
   
   .btn {
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: none;
-    border-radius: 5px;
+    border-radius: 12px;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: bold;
+    font-weight: 600;
     text-decoration: none;
     display: inline-block;
     text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 2;
     
     &.btn-primary {
-      background-color: #22C55E;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
       
       &:hover {
-        background-color: darken(#22C55E, 10%);
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+      }
+      
+      &:active {
+        transform: translateY(-1px);
       }
     }
     
     &.btn-secondary {
-      background-color: #6B7280;
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
       
       &:hover {
-        background-color: darken(#6B7280, 10%);
+        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
+      }
+      
+      &:active {
+        transform: translateY(-1px);
       }
     }
   }
 }
 
 .lesson-content {
-  background-color: white;
-  border-radius: 10px;
-  padding: 30px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 20px;
+  padding: 45px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  border: 1px solid #e2e8f0;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5);
+    border-radius: 20px 20px 0 0;
+  }
   
   .lesson-title {
-    color: #1E3A8A;
-    margin-bottom: 20px;
-    font-size: 2.5rem;
-  }
-  
-  .lesson-info {
+    color: #1e293b;
     margin-bottom: 30px;
-    padding: 15px;
-    background-color: #F3F4F6;
-    border-radius: 5px;
+    font-size: 2.5rem;
+    font-weight: 800;
+    position: relative;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
     
-    p {
-      margin: 5px 0;
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -12px;
+      left: 0;
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      border-radius: 2px;
     }
   }
-  
+
+  .lesson-info {
+    margin-bottom: 35px;
+    padding: 25px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%);
+    border-radius: 16px;
+    border-left: 5px solid #3b82f6;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+    
+    p {
+      margin: 10px 0;
+      color: #1e40af;
+      font-weight: 500;
+      font-size: 1.05rem;
+      
+      &:first-child {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 1.1rem;
+      }
+    }
+  }
+
   .lesson-description,
   .lesson-content-section {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
     
     h2 {
-      color: #1E3A8A;
-      margin-bottom: 15px;
-      border-bottom: 2px solid #E5E7EB;
-      padding-bottom: 5px;
+      color: #1e293b;
+      margin-bottom: 25px;
+      font-size: 1.6rem;
+      font-weight: 700;
+      position: relative;
+      padding-left: 24px;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        border-radius: 50%;
+      }
     }
     
     .processed-content {
-      line-height: 1.6;
+      line-height: 1.8;
+      color: #374151;
+      font-size: 1.1rem;
       
       h2 {
-        margin: 20px 0 10px 0;
+        margin: 30px 0 20px 0;
         font-size: 1.5rem;
-        color: #1E3A8A;
+        color: #1e293b;
+        padding-left: 0;
+        
+        &::before {
+          display: none;
+        }
       }
       
       ul {
-        margin: 10px 0;
-        padding-left: 20px;
+        margin: 20px 0;
+        padding-left: 35px;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 4px solid #4f46e5;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
       }
       
       li {
-        margin-bottom: 5px;
+        margin-bottom: 12px;
+        padding-left: 12px;
+        position: relative;
+        
+        &::marker {
+          color: #4f46e5;
+        }
       }
       
       strong {
-        font-weight: bold;
+        font-weight: 700;
+        color: #1e293b;
+        background: linear-gradient(120deg, rgba(79, 70, 229, 0.1) 0%, transparent 100%);
+        padding: 2px 6px;
+        border-radius: 4px;
       }
       
       em {
         font-style: italic;
+        color: #475569;
+        background: linear-gradient(120deg, rgba(124, 58, 237, 0.05) 0%, transparent 100%);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      
+      p {
+        margin: 18px 0;
+        line-height: 1.8;
       }
     }
   }
-  
+
   .lesson-media {
-    margin-top: 30px;
+    margin-top: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 16px;
+    border: 1px solid #cbd5e1;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
     
     .video-section,
     .animation-section {
-      margin-bottom: 20px;
+      margin-bottom: 30px;
       
       h3 {
-        color: #1E3A8A;
-        margin-bottom: 10px;
+        color: #1e293b;
+        margin-bottom: 20px;
+        font-size: 1.3rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        
+        &::before {
+          content: '▶';
+          margin-right: 10px;
+          color: #4f46e5;
+          font-size: 1.1rem;
+        }
       }
       
       video,
       iframe {
-        border-radius: 5px;
-        border: 1px solid #E5E7EB;
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
       }
     }
   }
 }
 
-.loading,
-.error {
+.loading {
   text-align: center;
-  padding: 40px;
+  padding: 80px 20px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 20px;
+  margin: 25px;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.1) 0%, transparent 70%);
+    animation: pulse 3s infinite;
+  }
   
   .btn {
-    padding: 10px 20px;
-    background-color: #22C55E;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 12px;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: bold;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
     
     &:hover {
-      background-color: darken(#22C55E, 10%);
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+    
+    &:active {
+      transform: translateY(-1px);
     }
   }
 }
 
 .error {
-  background-color: #FEE2E2;
-  color: #EF4444;
-  border-radius: 5px;
-  margin: 20px;
+  text-align: center;
+  padding: 40px;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #dc2626;
+  border-radius: 20px;
+  margin: 25px;
+  border-left: 6px solid #ef4444;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(220, 38, 38, 0.1) 0%, transparent 70%);
+    animation: pulse 3s infinite;
+  }
+  
+  .btn {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    
+    &:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    }
+    
+    &:active {
+      transform: translateY(-1px);
+    }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
