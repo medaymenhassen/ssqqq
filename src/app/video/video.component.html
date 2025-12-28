@@ -85,6 +85,16 @@
       </div>
     </section>
 
+    <!-- 3D Model Section -->
+    <section class="three-d-section">
+      <h2>👤 Personnage 3D Interactif</h2>
+      <div class="three-d-container" #threeDContainer></div>
+      <div class="model-info" *ngIf="showModelInfo">
+        <p>Ce personnage 3D réagit aux mouvements de votre corps. Cliquez sur le modèle pour afficher/masquer cette information.</p>
+        <p>Position X: {{ modelPosition.x | number:'1.2-2' }}, Y: {{ modelPosition.y | number:'1.2-2' }}, Z: {{ modelPosition.z | number:'1.2-2' }}</p>
+      </div>
+    </section>
+
     <!-- Section to display generated video after analysis -->
     <section class="generated-video-section" *ngIf="storedVideoUrl">
       <h2>🎥 Vidéo Générée après Analyse</h2>
@@ -122,6 +132,7 @@
           <div class="status-text">{{ getFaceStatus() }}</div>
           <div class="expression" *ngIf="bodyAnalysis?.face">
             <p>Expression: <strong>{{ getFaceExpression() }}</strong></p>
+            <p>Mouvement: <strong>{{ getDetectedMovement() }}</strong></p>
           </div>
           <div class="no-data" *ngIf="!bodyAnalysis?.face">Aucune donnée</div>
         </div>
@@ -164,21 +175,12 @@
     </section>
   </div>
 
-  <!-- Display captured images -->
-  <section class="captured-images-section" *ngIf="capturedImages.length > 0">
-    <h3>📸 Images Capturées</h3>
-    <div class="captured-images-container">
-      <div class="image-item" *ngFor="let image of capturedImages; let i = index">
-        <img [src]="image" alt="Captured image {{ i + 1 }}" class="captured-image" />
-      </div>
-    </div>
-  </section>
-
   <footer class="video-footer">
     <div class="info-box">
       <p>
         <strong>Confiance Posture:</strong> {{ getPoseConfidence() }}% | 
-        <strong>Confiance Visage:</strong> {{ getFaceConfidence() }}%
+        <strong>Confiance Visage:</strong> {{ getFaceConfidence() }}% | 
+        <strong>Mouvement Détecté:</strong> {{ getDetectedMovement() }}
       </p>
       <p>
         <a routerLink="/data" class="data-link">📊 Voir les données capturées</a>

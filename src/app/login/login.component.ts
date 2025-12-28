@@ -36,8 +36,15 @@ export class LoginComponent {
       this.authService.login(email, password).subscribe({
         next: (response) => {
           this.isLoading = false;
-          // Redirect to offers page
-          this.router.navigate(['/offers']);
+          // Wait a bit for the user to be loaded, then redirect based on role
+          setTimeout(() => {
+            const user = this.authService.getCurrentUser();
+            if (user && user.role === 'ADMIN') {
+              this.router.navigate(['/admin/approvals']);
+            } else {
+              this.router.navigate(['/profile']);
+            }
+          }, 100);
         },
         error: (error) => {
           this.isLoading = false;

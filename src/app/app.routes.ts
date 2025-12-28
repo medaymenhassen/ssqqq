@@ -21,6 +21,9 @@ import { OfferListComponent } from './offer/offer-list.component';
 import { OfferCreateComponent } from './offer/offer-create.component';
 import { OfferEditComponent } from './offer/offer-edit.component';
 import { LandingComponent } from './landing/landing.component';
+import { AuthGuard } from './auth.guard';
+import { AdminGuard } from './admin.guard';
+import { ApprovalsComponent } from './admin/approvals/approvals.component';
 
 export const routes: Routes = [
   { path: '', component: LandingComponent, pathMatch: 'full' },
@@ -29,28 +32,29 @@ export const routes: Routes = [
   { path: 'data', component: DataViewerComponent },
   { path: 'login', component: LoginComponent},
   { path: 'register', component: RegisterComponent},
-  { path: 'user-types', component: UserTypeListComponent},
-  { path: 'user-types/create', component: UserTypeFormComponent},
-  { path: 'user-types/:id/edit', component: UserTypeFormComponent },
-  { path: 'users', component: UserListComponent },
-  { path: 'course-tests', component: CourseTestListComponent },
-  { path: 'course-tests/create', component: CourseTestFormComponent },
-  { path: 'course-tests/:id/edit', component: CourseTestFormComponent },
-  { path: 'test-questions', component: TestQuestionListComponent },
-  { path: 'test-questions/create', component: TestQuestionFormComponent },
-  { path: 'test-questions/create/:courseTestId', component: TestQuestionFormComponent },
-  { path: 'test-questions/:id/edit', component: TestQuestionFormComponent },
-  { path: 'test-questions/:id/answers', component: QuestionAnswerManagerComponent },
-  { path: 'test-answers/create', component: TestAnswerFormComponent },
-  { path: 'test-answers/:id/edit', component: TestAnswerFormComponent },
-  { path: 'course-lessons', component: CourseLessonListComponent },
-  { path: 'course-lessons/create', component: CourseLessonFormComponent },
-  { path: 'course-lessons/:id/edit', component: CourseLessonFormComponent },
-  { path: 'course-lessons/:idSlug', component: CourseLessonDetailComponent },
-  { path: 'profile', component: UserProfileComponent },
-  { path: 'profile/:id', component: UserProfileComponent },
-  { path: 'offers', component: OfferListComponent },
-  { path: 'offers/create', component: OfferCreateComponent },
-  { path: 'offers/edit/:id', component: OfferEditComponent },
+  { path: 'user-types', component: UserTypeListComponent, canActivate: [AuthGuard]},
+  { path: 'user-types/create', component: UserTypeFormComponent, canActivate: [AdminGuard]},
+  { path: 'user-types/:id/edit', component: UserTypeFormComponent, canActivate: [AdminGuard] },
+  { path: 'users', component: UserListComponent, canActivate: [AdminGuard] },
+  { path: 'admin/approvals', component: ApprovalsComponent, canActivate: [AdminGuard] },
+  { path: 'course-tests', component: CourseTestListComponent, canActivate: [AuthGuard]},
+  { path: 'course-tests/create', component: CourseTestFormComponent, canActivate: [AdminGuard] },
+  { path: 'course-tests/:id/edit', component: CourseTestFormComponent, canActivate: [AdminGuard] },
+  { path: 'test-questions', component: TestQuestionListComponent, canActivate: [AuthGuard]},
+  { path: 'test-questions/create', component: TestQuestionFormComponent, canActivate: [AdminGuard] },
+  { path: 'test-questions/create/:courseTestId', component: TestQuestionFormComponent, canActivate: [AdminGuard] },
+  { path: 'test-questions/:id/edit', component: TestQuestionFormComponent, canActivate: [AdminGuard] },
+  { path: 'test-questions/:id/answers', component: QuestionAnswerManagerComponent, canActivate: [AuthGuard]},
+  { path: 'test-answers/create', component: TestAnswerFormComponent, canActivate: [AdminGuard] },
+  { path: 'test-answers/:id/edit', component: TestAnswerFormComponent, canActivate: [AdminGuard] },
+  { path: 'course-lessons', component: CourseLessonListComponent, canActivate: [AuthGuard]},
+  { path: 'course-lessons/create', component: CourseLessonFormComponent, canActivate: [AdminGuard] },
+  { path: 'course-lessons/:id/edit', component: CourseLessonFormComponent, canActivate: [AdminGuard] },
+  { path: 'course-lessons/:idSlug', component: CourseLessonDetailComponent, canActivate: [AuthGuard]},
+  { path: 'profile', component: UserProfileComponent, canActivate: [AuthGuard]},
+  { path: 'profile/:id', component: UserProfileComponent, canActivate: [AuthGuard]},
+  { path: 'offers', component: OfferListComponent, canActivate: [AdminGuard] },
+  { path: 'offers/create', component: OfferCreateComponent, canActivate: [AdminGuard] },
+  { path: 'offers/edit/:id', component: OfferEditComponent, canActivate: [AdminGuard] },
   { path: '**', redirectTo: '/' }
 ];

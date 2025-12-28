@@ -106,21 +106,23 @@ export class DocumentService {
     const formData = new FormData();
     
     // Add the movement data
-    formData.append('user', movementData.user.toString());
-    formData.append('label', movementData.label);
-    formData.append('movementType', movementData.movementType);
-    formData.append('timestamp', movementData.timestamp.toString());
+    formData.append('user', movementData.user?.toString() || '1'); // Default to 1 if user is null
+    formData.append('label', movementData.label || 'Movement Capture');
+    formData.append('movementType', movementData.movementType || 'general');
+    formData.append('timestamp', movementData.timestamp?.toString() || new Date().toISOString());
+    
+    // Add JSON data if it exists
+    if (movementData.jsonData) {
+      formData.append('jsonData', JSON.stringify(movementData.jsonData));
+    }
     
     // Add images if they exist
     if (movementData.images && movementData.images.length > 0) {
-
       movementData.images.forEach((image: string, index: number) => {
         // Convert data URL to Blob
         const blob = this.dataURLToBlob(image);
         formData.append(`images`, blob, `movement_${Date.now()}_${index}.png`);
       });
-    } else {
-
     }
     
     // For Django backend, we don't need authentication headers

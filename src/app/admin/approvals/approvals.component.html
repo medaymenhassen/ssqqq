@@ -1,0 +1,70 @@
+<div class="approvals-container">
+  <h1>Admin Approval Dashboard</h1>
+  
+  <div class="approvals-content">
+    <div *ngIf="loading" class="loading">
+      <p>Loading pending approvals...</p>
+    </div>
+    
+    <div *ngIf="error" class="error">
+      <p>{{ error }}</p>
+    </div>
+    
+    <div *ngIf="!loading && !error" class="approvals-list">
+      <h2>Pending Approvals</h2>
+      
+      <div *ngIf="pendingApprovals.length === 0" class="no-pending">
+        <p>No pending approvals at this time.</p>
+      </div>
+      
+      <div *ngIf="pendingApprovals.length > 0" class="approval-items">
+        <div *ngFor="let userOffer of pendingApprovals" class="approval-item">
+          <div class="approval-info">
+            <h3>{{ userOffer.offer?.title || 'Offer #' + userOffer.offerId }}</h3>
+            <p><strong>User:</strong> {{ userOffer.user?.firstname }} {{ userOffer.user?.lastname }} ({{ userOffer.user?.email }})</p>
+            <p><strong>Offer:</strong> {{ userOffer.offer?.description }}</p>
+            <p><strong>Price:</strong> {{ userOffer.offer?.price | number:'1.2-2' }} TND</p>
+            <p><strong>Purchase Date:</strong> {{ userOffer.purchaseDate | date:'medium' }}</p>
+            <p><strong>Status:</strong> <span class="status status-pending">{{ userOffer.approvalStatus }}</span></p>
+          </div>
+          
+          <div class="approval-actions">
+            <button 
+              class="btn btn-approve" 
+              (click)="approveOffer(userOffer.id)">
+              Approve
+            </button>
+            <button 
+              class="btn btn-reject" 
+              (click)="rejectOffer(userOffer.id)">
+              Reject
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Show all user offers as well -->
+      <div *ngIf="userOffers.length > 0" class="all-approvals">
+        <h2>All Approval Requests</h2>
+        <div *ngFor="let userOffer of userOffers" class="approval-item" 
+             [class.pending]="userOffer.approvalStatus === 'PENDING'"
+             [class.approved]="userOffer.approvalStatus === 'APPROVED'"
+             [class.rejected]="userOffer.approvalStatus === 'REJECTED'">
+          <div class="approval-info">
+            <h3>{{ userOffer.offer?.title || 'Offer #' + userOffer.offerId }}</h3>
+            <p><strong>User:</strong> {{ userOffer.user?.firstname }} {{ userOffer.user?.lastname }} ({{ userOffer.user?.email }})</p>
+            <p><strong>Status:</strong> 
+              <span 
+                class="status" 
+                [class.status-pending]="userOffer.approvalStatus === 'PENDING'"
+                [class.status-approved]="userOffer.approvalStatus === 'APPROVED'"
+                [class.status-rejected]="userOffer.approvalStatus === 'REJECTED'">
+                {{ userOffer.approvalStatus }}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

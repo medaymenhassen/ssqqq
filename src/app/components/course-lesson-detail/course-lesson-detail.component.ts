@@ -207,9 +207,9 @@ export class CourseLessonDetailComponent implements OnInit, OnDestroy {
                     }, 3000);
                   } else {
                     this.error = 'You do not have access to this content. Please purchase an offer first.';
-                    // Redirect to offers page after showing error
+                    // Redirect to homepage after showing error
                     setTimeout(() => {
-                      this.router.navigate(['/offers']);
+                      this.router.navigate(['/']);
                     }, 3000);
                   }
                   this.loading = false;
@@ -316,9 +316,9 @@ export class CourseLessonDetailComponent implements OnInit, OnDestroy {
                 }, 3000);
               } else {
                 this.error = 'You do not have access to this content. Please purchase an offer first.';
-                // Redirect to offers page after showing error
+                // Redirect to homepage after showing error
                 setTimeout(() => {
-                  this.router.navigate(['/offers']);
+                  this.router.navigate(['/']);
                 }, 3000);
               }
               this.loading = false;
@@ -331,9 +331,9 @@ export class CourseLessonDetailComponent implements OnInit, OnDestroy {
               this.remainingTime = 0;
               this.displayTime = 0;
               this.lastUpdateTime = Date.now();
-              // Redirect to offers page after showing error
+              // Redirect to homepage after showing error
               setTimeout(() => {
-                this.router.navigate(['/offers']);
+                this.router.navigate(['/']);
               }, 3000);
             }
           });
