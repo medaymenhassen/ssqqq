@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, User } from '../auth.service';
 import { TestService, CourseLesson } from '../services/test.service';
 import { DocumentService, Document } from '../services/document.service';
@@ -9,12 +9,13 @@ import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 @Component({
   selector: 'app-user-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './user-profile.component.html',
   styleUrl: './user-profile.component.scss'
 })
 export class UserProfileComponent implements OnInit {
   currentUser: User | null = null;
+  isAdmin: boolean = false;
   completedLessons: CourseLesson[] = [];
   serviceLessons: CourseLesson[] = [];
   formationLessons: CourseLesson[] = [];
@@ -52,6 +53,7 @@ export class UserProfileComponent implements OnInit {
       // Viewing current user's profile
       this.authService.currentUser.subscribe(user => {
         this.currentUser = user;
+        this.isAdmin = user?.role === 'ADMIN';
         if (user) {
           this.loadUserProfileData(user.id);
         }

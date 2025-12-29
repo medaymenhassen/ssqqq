@@ -305,7 +305,7 @@ export class VideoService {
           left: leftHand,
           right: rightHand
         },
-        isAnalyzing: false,
+        isAnalyzing: true, // Keep analyzing for continuous tracking
         poseConfidence: poseConfidence,
         faceConfidence: faceConfidence,
         handsDetected: {
@@ -413,14 +413,14 @@ export class VideoService {
     keyIndices.forEach(idx => {
       if (landmarks[idx]) {
         // Check for different possible confidence properties
-        const visibility = landmarks[idx].visibility ?? landmarks[idx].score ?? 0;
+        const visibility = landmarks[idx].visibility ?? landmarks[idx].score ?? 0.8; // Default to 0.8 instead of 0
         totalConfidence += visibility;
         count++;
 
       }
     });
 
-    const confidence = count > 0 ? Math.round((totalConfidence / count) * 100) : 0;
+    const confidence = count > 0 ? Math.max(0, Math.min(100, Math.round((totalConfidence / count) * 100))) : 0;
     return confidence;
   }
 
@@ -590,6 +590,127 @@ export class VideoService {
 
   getCurrentAnalysis(): BodyAnalysis {
     return this.bodyAnalysisSubject.value;
+  }
+
+  // Method to analyze static content (images/videos) without setting isAnalyzing to false
+  async analyzeStaticContent(videoElement: HTMLVideoElement): Promise<void> {
+    if (!this.poseDetector && !this.faceDetector && !this.handDetector) {
+      await this.initializeMediaPipe();
+    }
+
+    try {
+      const results: any = {};
+      
+      // Detect pose
+      if (this.poseDetector) {
+        const poseResults = await this.poseDetector.detectForVideo(videoElement, performance.now());
+        if (poseResults.landmarks && poseResults.landmarks.length > 0) {
+          results.poseLandmarks = poseResults.landmarks;
+          results.poseWorldLandmarks = poseResults.worldLandmarks;
+        }
+      }
+      
+      // Detect face
+      if (this.faceDetector) {
+        const faceResults = await this.faceDetector.detectForVideo(videoElement, performance.now());
+        if (faceResults.faceLandmarks && faceResults.faceLandmarks.length > 0) {
+          results.faceLandmarks = faceResults.faceLandmarks;
+        }
+      }
+      
+      // Detect hands
+      if (this.handDetector) {
+        const handResults = await this.handDetector.detectForVideo(videoElement, performance.now());
+        if (handResults.landmarks && handResults.landmarks.length > 0) {
+          // Separate left and right hands based on x position
+          handResults.landmarks.forEach((landmarks: any, index: number) => {
+            if (handResults.handednesses && handResults.handednesses[index]) {
+              const handedness = handResults.handednesses[index][0].categoryName;
+              if (handedness === 'Left') {
+                results.leftHandLandmarks = landmarks;
+              } else if (handedness === 'Right') {
+                results.rightHandLandmarks = landmarks;
+              }
+            }
+          });
+        }
+      }
+      
+      // Process results but keep isAnalyzing true for static content
+      this.processStaticResults(results);
+    } catch (error) {
+      console.error('Error analyzing static content:', error);
+      this.updateAnalysis({ isAnalyzing: false });
+    }
+  }
+
+  private processStaticResults(results: any): void {
+    if (!results) {
+      return;
+    }
+
+    try {
+      // For static content, we want to keep analyzing state as true
+      this.updateAnalysis({ isAnalyzing: true });
+
+      let poseData: PoseData | null = null;
+      let poseConfidence = 0;
+      let leftHand: HandData | null = null;
+      let rightHand: HandData | null = null;
+      let faceData: FaceData | null = null;
+      let faceConfidence = 0;
+
+      // Process pose
+      if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+        poseData = this.convertPoseToKalidokit(results.poseLandmarks, results.poseWorldLandmarks);
+        poseConfidence = this.calculatePoseConfidence(results.poseLandmarks);
+      }
+
+      // Process hands
+      if (results.leftHandLandmarks) {
+        leftHand = {
+          landmarks: results.leftHandLandmarks,
+          handedness: 'left',
+          gesture: this.detectHandGesture(results.leftHandLandmarks)
+        };
+      }
+
+      if (results.rightHandLandmarks) {
+        rightHand = {
+          landmarks: results.rightHandLandmarks,
+          handedness: 'right',
+          gesture: this.detectHandGesture(results.rightHandLandmarks)
+        };
+      }
+
+      // Process face
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        faceData = this.convertFaceToKalidokit(results.faceLandmarks);
+        faceConfidence = this.calculateFaceConfidence(results.faceLandmarks);
+      }
+
+      const bodyMetrics = this.calculateBodyMetrics(poseData, faceData);
+
+      this.updateAnalysis({
+        pose: poseData,
+        face: faceData,
+        hands: {
+          left: leftHand,
+          right: rightHand
+        },
+        isAnalyzing: true, // Keep as true for static content
+        poseConfidence: poseConfidence,
+        faceConfidence: faceConfidence,
+        handsDetected: {
+          left: leftHand !== null,
+          right: rightHand !== null
+        },
+        bodyMetrics: bodyMetrics
+      });
+      
+    } catch (error) {
+      this.updateAnalysis({ isAnalyzing: false });
+    }
   }
 
   dispose(): void {

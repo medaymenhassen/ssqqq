@@ -34,4 +34,7 @@ public interface UserOfferRepository extends JpaRepository<UserOffer, Long> {
     
     @EntityGraph(attributePaths = {"user", "offer"})
     List<UserOffer> findByUserAndIsActiveTrueAndApprovalStatusAndExpirationDateAfter(User user, ApprovalStatus approvalStatus, LocalDateTime currentDate);
+    
+    @EntityGraph(attributePaths = {"user", "offer"})
+    List<UserOffer> findByApprovalStatus(ApprovalStatus approvalStatus);
 }

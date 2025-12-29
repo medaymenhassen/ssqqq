@@ -14,7 +14,7 @@ import time
 
 class ElectricVehicleLessonCreator:
     def __init__(self):
-        self.base_url = "https://cognitiex.com"
+        self.base_url = "http://localhost:8080"
         self.admin_email = "mohamed@admin.com"
         self.admin_password = "mohamed0192837465MED"
         self.admin_token = None
@@ -176,8 +176,8 @@ class ElectricVehicleLessonCreator:
         lesson_data = {
             "title": "Module 1: Les Origines et l'Âge d'Or (1832-1920)",
             "description": "Analyse approfondie des débuts technologiques, de l'innovation des batteries plomb-acide et de la domination du marché américain par les véhicules électriques avant 1912.",
-            "videoUrl": "https://cognitiex.com/content/module1.mp4",
-            "animation3dUrl": "https://cognitiex.com/content/module1.glb",
+            "videoUrl": "https://example.com/content/module1.mp4",
+            "animation3dUrl": "https://example.com/content/module1.glb",
             "contentTitle": "Les Débuts Technologiques et l'Âge d'Or",
             "contentDescription": """**LES ORIGINES (1832-1880)**
 
@@ -258,8 +258,8 @@ Mom, G.P.A. (2004). "The Electric Vehicle". Johns Hopkins University Press.""",
         lesson_data = {
             "title": "Module 2: Le Déclin et la Stagnation (1920-1990)",
             "description": "Analyse des facteurs qui ont causé le déclin des véhicules électriques et leur quasi-disparition du marché grand public pendant 70 ans.",
-            "videoUrl": "https://cognitiex.com/content/module2.mp4",
-            "animation3dUrl": "https://cognitiex.com/content/module2.glb",
+            "videoUrl": "https://example.com/content/module2.mp4",
+            "animation3dUrl": "https://example.com/content/module2.glb",
             "contentTitle": "Déclin Technologique et Stagnation",
             "contentDescription": """**CAUSES DU DÉCLIN (1912-1930)**
 
@@ -347,8 +347,8 @@ Cowan, R.S. (1997). "A Social History of American Technology". Oxford University
         lesson_data = {
             "title": "Module 3: La Renaissance Technologique (1990-2010)",
             "description": "Retour des VE grâce aux avancées technologiques en batteries lithium-ion et à la prise de conscience environnementale.",
-            "videoUrl": "https://cognitiex.com/content/module3.mp4",
-            "animation3dUrl": "https://cognitiex.com/content/module3.glb",
+            "videoUrl": "https://example.com/content/module3.mp4",
+            "animation3dUrl": "https://example.com/content/module3.glb",
             "contentTitle": "Retour des Véhicules Électriques",
             "contentDescription": """**LES INNOVATIONS CLÉS (1990-2000)**
 
@@ -441,8 +441,8 @@ Mom, G.P.A. (2004). "The Electric Vehicle". Johns Hopkins University Press.""",
         lesson_data = {
             "title": "Module 4: L'Ère Moderne et la Transformation (2010-2025)",
             "description": "Analyse de l'adoption massive, de la concurrence accrue et de la transformation complète du secteur automobile.",
-            "videoUrl": "https://cognitiex.com/content/module4.mp4",
-            "animation3dUrl": "https://cognitiex.com/content/module4.glb",
+            "videoUrl": "https://example.com/content/module4.mp4",
+            "animation3dUrl": "https://example.com/content/module4.glb",
             "contentTitle": "Transformation Complète du Secteur",
             "contentDescription": """**L'EXPLOSION DE LA CROISSANCE (2010-2020)**
 
@@ -548,8 +548,8 @@ McKinsey & Company - Future of Mobility reports""",
         lesson_data = {
             "title": "Module 5: Perspectives Futures et Impact Géopolitique",
             "description": "Vision prospective des véhicules électriques et leur impact sur l'économie mondiale, l'environnement et la géopolitique de l'énergie.",
-            "videoUrl": "https://cognitiex.com/content/module5.mp4",
-            "animation3dUrl": "https://cognitiex.com/content/module5.glb",
+            "videoUrl": "https://example.com/content/module5.mp4",
+            "animation3dUrl": "https://example.com/content/module5.glb",
             "contentTitle": "L'Avenir des Véhicules Électriques",
             "contentDescription": """**SCÉNARIOS TECHNOLOGIQUES (2025-2050)**
 
@@ -705,7 +705,7 @@ IPCC Special Report on Climate Change 2023""",
 
         try:
             response = requests.get(
-                f"{self.base_url}/api/tests",
+                f"{self.base_url}/api/tests/course-tests",
                 headers=headers
             )
 
@@ -747,7 +747,7 @@ IPCC Special Report on Climate Change 2023""",
 
         print("\nCreating Module 1 test...")
         response = requests.post(
-            f"{self.base_url}/api/tests",
+            f"{self.base_url}/api/tests/course-tests",
             json=test_data,
             headers=headers
         )
@@ -814,7 +814,7 @@ IPCC Special Report on Climate Change 2023""",
 
         print("\nCreating Module 2 test...")
         response = requests.post(
-            f"{self.base_url}/api/tests",
+            f"{self.base_url}/api/tests/course-tests",
             json=test_data,
             headers=headers
         )
@@ -881,7 +881,7 @@ IPCC Special Report on Climate Change 2023""",
 
         print("\nCreating Module 3 test...")
         response = requests.post(
-            f"{self.base_url}/api/tests",
+            f"{self.base_url}/api/tests/course-tests",
             json=test_data,
             headers=headers
         )
@@ -948,7 +948,7 @@ IPCC Special Report on Climate Change 2023""",
 
         print("\nCreating Module 4 test...")
         response = requests.post(
-            f"{self.base_url}/api/tests",
+            f"{self.base_url}/api/tests/course-tests",
             json=test_data,
             headers=headers
         )
@@ -1015,7 +1015,7 @@ IPCC Special Report on Climate Change 2023""",
 
         print("\nCreating Module 5 test...")
         response = requests.post(
-            f"{self.base_url}/api/tests",
+            f"{self.base_url}/api/tests/course-tests",
             json=test_data,
             headers=headers
         )
@@ -1069,12 +1069,13 @@ IPCC Special Report on Climate Change 2023""",
             "question": question_data["question"],
             "options": question_data["options"],
             "correctAnswer": question_data["correctAnswer"],
-            "explanation": question_data.get("explanation", "")
+            "explanation": question_data.get("explanation", ""),
+            "courseTestId": test_id  # Include the test ID in the request body
         }
 
         print(f"Creating question: {question_data['question'][:50]}...")
         response = requests.post(
-            f"{self.base_url}/api/tests/{test_id}/questions",
+            f"{self.base_url}/api/tests/questions",
             json=question_payload,
             headers=headers
         )

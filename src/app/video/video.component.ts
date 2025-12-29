@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, Input } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, Input, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { VideoService, BodyAnalysis } from '../video.service';
 import { AuthService, User } from '../auth.service';
@@ -42,7 +42,7 @@ interface CapturedVideo {
   styleUrls: ['./video.component.scss'],
   imports: [CommonModule]
 })
-export class VideoComponent implements OnInit, OnDestroy {
+export class VideoComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('videoElement') videoElement!: ElementRef;
   @ViewChild('canvasElement') canvasElement!: ElementRef;
   @ViewChild('threeDContainer') threeDContainer!: ElementRef;
@@ -137,12 +137,12 @@ export class VideoComponent implements OnInit, OnDestroy {
     private documentService: DocumentService,
     private videoUploadService: VideoUploadService,
     private djDataService: DjDataService,
-    private djAuthService: DjAuthService
+    private djAuthService: DjAuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadCurrentUser();
-    this.setupBodyAnalysisSubscription();
     
     // Initialize 3D scene after view is ready, only in browser environment
     if (typeof window !== 'undefined') {
@@ -156,6 +156,12 @@ export class VideoComponent implements OnInit, OnDestroy {
     
     // Initialize Django authentication
     this.initDjangoAuth();
+  }
+  
+  ngAfterViewInit(): void {
+    // Set up body analysis subscription after view is initialized
+    // This ensures we're definitely in the browser environment
+    this.setupBodyAnalysisSubscription();
   }
 
 ngOnDestroy(): void {
@@ -212,19 +218,21 @@ ngOnDestroy(): void {
   }
 
   private setupBodyAnalysisSubscription(): void {
-    // Check if we're in browser environment
-    if (typeof window === 'undefined') {
-      console.warn('Body analysis subscription skipped - not in browser environment');
-      return;
-    }
-    
     this.videoService.bodyAnalysis$.subscribe(analysis => {
-      this.bodyAnalysis = analysis;
-      if (analysis.isAnalyzing) {
-        this.collectMovementData(Date.now());
-        // Also detect movements and capture images when movement is detected
-        this.detectMovementAndCapture();
-      }
+      // Use setTimeout to defer the update and avoid ExpressionChangedAfterItHasBeenCheckedError
+      setTimeout(() => {
+        this.bodyAnalysis = analysis;
+        if (analysis.isAnalyzing) {
+          this.collectMovementData(Date.now());
+          // Also detect movements and capture images when movement is detected
+          this.detectMovementAndCapture();
+        }
+        
+        // Trigger change detection to update the view
+        if (typeof window !== 'undefined') {
+          this.cdr.detectChanges();
+        }
+      });
     });
   }
 
@@ -296,6 +304,9 @@ ngOnDestroy(): void {
 
     // Stop data sending
     this.stopDataSending();
+
+    // Stop video analysis loop
+    this.stopVideoAnalysisLoop();
 
     // Create video from CSV data
     this.createVideoFromPoseCSV();
@@ -413,13 +424,18 @@ ngOnDestroy(): void {
       return;
     }
       
+    // Debug logging to understand what's happening
+    console.log('🔍 sendMovementData called - images:', this.capturedImagesForSend.length, 'userId:', this.userId);
+        
     // Vérifier que nous avons des images et des données
     if (this.capturedImagesForSend.length === 0 || !this.userId) {
-  
+      console.log('⚠️ Skipping data send - images:', this.capturedImagesForSend.length, 'userId:', this.userId);
       return;
     }
-      
-  
+        
+    console.log('📤 Attempting to send', this.capturedImagesForSend.length, 'images to Django backend');
+        
+    
       
     // Format the data as "date-userid-movement_type"
     const dateStr = new Date().toLocaleDateString('fr-FR'); // Format: 26/12/2026
@@ -433,16 +449,17 @@ ngOnDestroy(): void {
       timestamp: Date.now(),
       images: this.capturedImagesForSend // Send captured images
     };
-      
-  
-      
+        
+    console.log('📡 Sending movement data:', movementDataToSend);
+        
     // Send to Django backend via document service (the only service that handles this)
+    console.log('🔌 Calling documentService.uploadMovementData');
     this.documentService.uploadMovementData(movementDataToSend).subscribe({
       next: (response) => {
         console.log('✅ Images envoyées avec succès:', response);
         // Clear the captured images after successful sending
         this.capturedImagesForSend = [];
-  
+    
       },
       error: (error) => {
         console.error('❌ Erreur lors de l\'envoi des images:', error);
@@ -2197,22 +2214,46 @@ ngOnDestroy(): void {
     this.errorMessage = '';
 
     try {
-      // In a real implementation, we would process the video file using MediaPipe
-      // For now, we'll simulate the processing by creating a URL for the selected file
       const videoUrl = URL.createObjectURL(this.selectedVideoFile);
       
       // Set the video element source to the selected file
       if (this.videoElement) {
         this.videoElement.nativeElement.src = videoUrl;
-        this.videoElement.nativeElement.play();
         
         // Initialize MediaPipe for the video file
         await this.videoService.initializeMediaPipe();
-        await this.videoService.setupHolistic(this.videoElement.nativeElement);
         
-        this.isTracking = true;
-        this.isVideoInitialized = true;
-        this.analysisStartTime = Date.now();
+        // For video files, we need to handle analysis differently than webcam
+        // We'll manually trigger analysis on video events
+        this.videoElement.nativeElement.onloadeddata = async () => {
+          // Only proceed if in browser environment
+          if (typeof window !== 'undefined') {
+            // CRITICAL: Setup Holistic BEFORE starting analysis
+            await this.videoService.setupHolistic(this.videoElement.nativeElement);
+            
+            this.isTracking = true;
+            this.isVideoInitialized = true;
+            this.analysisStartTime = Date.now();
+            
+            // Load current user to ensure authentication
+            await this.loadCurrentUser();
+            
+            // Start analysis loop WITH proper setup
+            this.startVideoAnalysisLoop();
+            this.startImageCapture();
+            this.startDataSending();
+          }
+        };
+        
+        // Handle video end to stop analysis
+        this.videoElement.nativeElement.onended = () => {
+          this.stopVideoAnalysisLoop();
+          this.stopImageCapture();
+          this.stopDataSending();
+          this.isTracking = false;
+        };
+        
+        this.videoElement.nativeElement.play();
       }
     } catch (error) {
       this.errorMessage = 'Erreur lors du traitement de la vidéo: ' + (error as Error).message;
@@ -2283,15 +2324,24 @@ ngOnDestroy(): void {
       // Set the video element source to the selected image
       if (this.videoElement) {
         this.videoElement.nativeElement.src = imageUrl;
-        this.videoElement.nativeElement.play();
-        
+                
         // Initialize MediaPipe for the image file
         await this.videoService.initializeMediaPipe();
-        await this.videoService.setupHolistic(this.videoElement.nativeElement);
-        
-        this.isTracking = true;
-        this.isVideoInitialized = true;
-        this.analysisStartTime = Date.now();
+                
+        // For images, analyze once when loaded
+        this.videoElement.nativeElement.onloadeddata = async () => {
+          // Only proceed if in browser environment
+          if (typeof window !== 'undefined') {
+            this.isTracking = true;
+            this.isVideoInitialized = true;
+            this.analysisStartTime = Date.now();
+                    
+            // Analyze the image once
+            await this.analyzeImageFrame();
+          }
+        };
+                
+        this.videoElement.nativeElement.play();
       }
     } catch (error) {
       this.errorMessage = 'Erreur lors du traitement de l' + "'" + 'image: ' + (error as Error).message;
@@ -2489,28 +2539,32 @@ ngOnDestroy(): void {
     this.isModelLoaded = true;
   }
 
-  private animate(): void {
-    // Check if we're in browser environment
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
-    requestAnimationFrame(() => this.animate());
-    
-    // Update model position based on body tracking
+  private lastFrameTime = 0;
+
+  private animate = (): void => {
+    if (typeof window === 'undefined') return;
+
+    requestAnimationFrame(this.animate);
+
+    // Calculate deltaTime
+    const now = performance.now();
+    const deltaTime = (now - this.lastFrameTime) / 1000;
+    this.lastFrameTime = now;
+
+    // Update model position
     this.updateModelPosition();
-    
-    // Update VRM animation if VRM exists
-    if (this.vrm) {
-      const delta = 0.016; // Assuming ~60fps
-      this.vrm.update(delta);
+
+    // Update VRM with proper deltaTime
+    if (this.vrm && this.bodyAnalysis?.pose) {
+      this.vrm.update(Math.min(deltaTime, 0.016)); // Cap at 60fps
+      this.updateVRMBones(this.bodyAnalysis.pose);
     }
-    
-    // Update controls if they exist
+
+    // Update controls
     if (this.controls) {
       this.controls.update();
     }
-    
+
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -2570,59 +2624,70 @@ ngOnDestroy(): void {
   }
   
   private updateVRMBones(pose: any): void {
-    // Check if we're in browser environment
-    if (typeof window === 'undefined' || !this.vrm || !this.vrm.humanoid) return;
-    
+    if (typeof window === 'undefined' || !this.vrm?.humanoid) {
+      return;
+    }
+
     try {
-      console.log('Updating VRM bones with pose data');
-      
-      // Use the new API: getRawBoneNode or getNormalizedBoneNode instead of getBoneNode
-      const headBone = this.vrm.humanoid.getRawBoneNode('head');
-      const spineBone = this.vrm.humanoid.getRawBoneNode('spine');
-      const leftHandBone = this.vrm.humanoid.getRawBoneNode('leftHand');
-      const rightHandBone = this.vrm.humanoid.getRawBoneNode('rightHand');
-      
-      console.log('Available bones:', {
-        head: !!headBone,
-        spine: !!spineBone,
-        leftHand: !!leftHandBone,
-        rightHand: !!rightHandBone
-      });
-      
-      // Head tracking
-      const head = pose['Head'];
-      if (head && head.position && head.confidence > 0.5) {
-        if (headBone) {
-          console.log('Updating head bone rotation');
-          // Apply head rotation based on head position
-          // This is a simplified approach - in practice, you'd use more sophisticated mapping
-          const rotationX = (head.position.y - 0.5) * 0.5; // Map to rotation
-          const rotationY = -(head.position.x - 0.5) * 0.5; // Map to rotation
-          
-          headBone.rotation.x = rotationX;
-          headBone.rotation.y = rotationY;
+      // Helper function to safely get and rotate bone
+      const rotateBone = (boneName: string, rotX: number, rotY: number, rotZ: number) => {
+        const bone = this.vrm?.humanoid?.getRawBoneNode(boneName as any);
+        if (bone) {
+          bone.rotation.x = rotX;
+          bone.rotation.y = rotY;
+          bone.rotation.z = rotZ;
         }
+      };
+
+      // Head rotation based on head position
+      const head = pose['Head'];
+      if (head?.position) {
+        const headX = (head.position.y - 0.5) * Math.PI; // Pitch
+        const headY = -(head.position.x - 0.5) * Math.PI; // Yaw
+        rotateBone('head', headX * 0.5, headY * 0.5, 0);
       }
-      
-      // Update spine for body movement
-      const nose = pose['Nose'];
+
+      // Spine rotation based on shoulder alignment
       const leftShoulder = pose['LeftShoulder'];
       const rightShoulder = pose['RightShoulder'];
       
-      if (nose && leftShoulder && rightShoulder && nose.confidence > 0.5) {
-        if (spineBone) {
-          console.log('Updating spine bone rotation');
-          // Apply slight rotation to spine based on body orientation
-          const shoulderDiffX = Math.abs(leftShoulder.position.x - rightShoulder.position.x);
-          const shoulderDiffY = Math.abs(leftShoulder.position.y - rightShoulder.position.y);
-          
-          // Only apply if the difference is significant (to avoid noise)
-          if (shoulderDiffX > 0.1 || shoulderDiffY > 0.1) {
-            spineBone.rotation.z = (leftShoulder.position.y - rightShoulder.position.y) * 0.5;
-          }
-        }
+      if (leftShoulder?.position && rightShoulder?.position) {
+        const shoulderDiff = leftShoulder.position.y - rightShoulder.position.y;
+        const shoulderAngle = Math.atan2(shoulderDiff, 0.3) * 0.3;
+        rotateBone('spine', 0, 0, shoulderAngle);
       }
+
+      // Left arm based on shoulder-elbow-wrist
+      const leftShoulder_pos = pose['LeftShoulder']?.position;
+      const leftElbow = pose['LeftElbow']?.position;
+      const leftWrist = pose['LeftWrist']?.position;
+
+      if (leftShoulder_pos && leftElbow && leftWrist) {
+        const elbowAngle = this.calculateBoneAngle(leftShoulder_pos, leftElbow, leftWrist);
+        rotateBone('leftUpperArm', -0.2, -0.3, 0);
+        rotateBone('leftLowerArm', -elbowAngle * 0.3, 0, 0);
+      }
+
+      // Right arm (mirror of left)
+      const rightShoulder_pos = pose['RightShoulder']?.position;
+      const rightElbow = pose['RightElbow']?.position;
+      const rightWrist = pose['RightWrist']?.position;
+
+      if (rightShoulder_pos && rightElbow && rightWrist) {
+        const elbowAngle = this.calculateBoneAngle(rightShoulder_pos, rightElbow, rightWrist);
+        rotateBone('rightUpperArm', -0.2, 0.3, 0);
+        rotateBone('rightLowerArm', -elbowAngle * 0.3, 0, 0);
+      }
+
+      // Hip and leg rotations
+      const leftHip = pose['LeftHip']?.position;
+      const rightHip = pose['RightHip']?.position;
       
+      if (leftHip && rightHip) {
+        const hipDiff = leftHip.y - rightHip.y;
+        rotateBone('hips', 0, 0, hipDiff * 0.2);
+      }
+
       // Update hands based on hand tracking data
       if (this.bodyAnalysis?.hands) {
         this.updateVRMHands(this.bodyAnalysis.hands);
@@ -2632,10 +2697,23 @@ ngOnDestroy(): void {
       if (this.bodyAnalysis?.face) {
         this.updateVRMFace(this.bodyAnalysis.face);
       }
-      
+
     } catch (error) {
-      console.warn('Error updating VRM bones:', error);
+      console.warn('Erreur lors de la mise à jour des bones VRM:', error);
     }
+  }
+
+  // Helper method for calculating bone angles
+  private calculateBoneAngle(point1: any, point2: any, point3: any): number {
+    if (!point1 || !point2 || !point3) return 0;
+    
+    const v1 = { x: point2.x - point1.x, y: point2.y - point1.y };
+    const v2 = { x: point3.x - point2.x, y: point3.y - point2.y };
+    
+    const dot = v1.x * v2.x + v1.y * v2.y;
+    const det = v1.x * v2.y - v1.y * v2.x;
+    
+    return Math.atan2(det, dot);
   }
   
   private updateVRMHands(hands: any): void {
@@ -2889,5 +2967,117 @@ ngOnDestroy(): void {
         }
       }
     });
+  }
+
+  private async analyzeImageFrame(): Promise<void> {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined' || !this.videoElement || !this.videoElement.nativeElement) {
+      return;
+    }
+    
+    try {
+      // Use the new static content analysis method
+      await this.videoService.analyzeStaticContent(this.videoElement.nativeElement);
+    } catch (error) {
+      console.error('Error analyzing image frame:', error);
+    }
+  }
+
+  private videoAnalysisInterval: any;
+
+  private startVideoAnalysisLoop(): void {
+    // Stop any existing analysis loop
+    this.stopVideoAnalysisLoop();
+    
+    // Start a new analysis loop for the video
+    this.videoAnalysisInterval = setInterval(() => {
+      this.analyzeVideoFrame();
+    }, 100); // Analyze every 100ms
+  }
+
+  private stopVideoAnalysisLoop(): void {
+    if (this.videoAnalysisInterval) {
+      clearInterval(this.videoAnalysisInterval);
+      this.videoAnalysisInterval = null;
+    }
+  }
+
+  private async analyzeVideoFrame(): Promise<void> {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined' || !this.videoElement || !this.videoElement.nativeElement || 
+        this.videoElement.nativeElement.paused || this.videoElement.nativeElement.ended) {
+      return;
+    }
+      
+    const video = this.videoElement.nativeElement;
+      
+    // Check that the video is ready
+    if (video.readyState !== video.HAVE_ENOUGH_DATA || 
+        video.videoWidth === 0 || 
+        video.videoHeight === 0) {
+      return;
+    }
+      
+    try {
+      // Use analyzeFrame instead of analyzeStaticContent
+      await (this.videoService as any).analyzeFrame(video);
+        
+      // Capture frame for sending
+      this.captureVideoFrameImage(video);
+        
+      // Send data immediately for video processing
+      if (this.userId && this.capturedImagesForSend.length > 0) {
+        this.sendMovementData();
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse de la frame vidéo:', error);
+    }
+  }
+  
+  private captureVideoFrameImage(video: HTMLVideoElement): void {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      console.warn('Frame capture skipped - not in browser environment');
+      return;
+    }
+    
+    // Ensure video is ready and has valid dimensions
+    if (video.readyState !== video.HAVE_ENOUGH_DATA || 
+        video.videoWidth === 0 || 
+        video.videoHeight === 0) {
+      return;
+    }
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.min(video.videoWidth, 320); // Reduce size to optimize
+    canvas.height = Math.min(video.videoHeight, 240);
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert to data URL with JPEG format for smaller size
+      const imageData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality
+      
+      console.log('📸 Frame captured - image length:', imageData.length);
+      
+      // Add to the captured images array for processing
+      this.capturedImages.push(imageData);
+      
+      // Keep only the last 5 images to prevent memory issues
+      if (this.capturedImages.length > 5) {
+        this.capturedImages.shift();
+      }
+      
+      // Also add to the movement-specific capture array for backend sending
+      this.capturedImagesForSend.push(imageData);
+      
+      // Keep only the last 3 images in the send array to prevent memory issues
+      if (this.capturedImagesForSend.length > 3) {
+        this.capturedImagesForSend.shift();
+      }
+      
+      console.log('📊 Images for send array length:', this.capturedImagesForSend.length);
+    }
   }
 }

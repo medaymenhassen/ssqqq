@@ -13,6 +13,11 @@
         </span>
       </p>
     </div>
+    
+    <!-- Admin Link if user is admin -->
+    <div class="admin-section" *ngIf="currentUser.role === 'ADMIN'">
+      <a routerLink="/admin/approvals" class="btn btn-admin">Accéder à la gestion des approbations</a>
+    </div>
   </div>
 
   <!-- Completed Lessons Section -->

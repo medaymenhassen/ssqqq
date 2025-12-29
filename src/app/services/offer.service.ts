@@ -143,14 +143,21 @@ export class OfferService {
     );
   }
 
-  approveOffer(userOfferId: number): Observable<UserOffer> {
-    return this.http.put<UserOffer>(`${this.apiUrl}/offers/${userOfferId}/approve`, {}, {
+  // Method to get all pending offers for admin approval
+  getAllPendingOffers(): Observable<UserOffer[]> {
+    return this.http.get<UserOffer[]>(`${this.apiUrl}/offers/admin/pending`, {
       headers: this.getAuthHeaders()
     });
   }
 
-  rejectOffer(userOfferId: number): Observable<UserOffer> {
-    return this.http.put<UserOffer>(`${this.apiUrl}/offers/${userOfferId}/reject`, {}, {
+  approveOffer(userOfferId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/offers/${userOfferId}/approve`, {}, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  rejectOffer(userOfferId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/offers/${userOfferId}/reject`, {}, {
       headers: this.getAuthHeaders()
     });
   }

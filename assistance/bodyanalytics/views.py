@@ -641,7 +641,7 @@ class DjangoTestQuestionListView(APIView):
                 question_data = {
                     'id': question.id,
                     'question_text': question.question_text,
-                    'course_test_id': question.course_test_id,
+                    'course_test_id': question.test.id if question.test else None,
                     'question_order': question.question_order,
                     'points': question.points,
                     'question_type': question.question_type,
@@ -659,13 +659,13 @@ class DjangoTestQuestionListView(APIView):
 class DjangoTestQuestionByTestView(APIView):
     def get(self, request, test_id):
         try:
-            questions = TestQuestion.objects.filter(course_test_id=test_id)
+            questions = TestQuestion.objects.filter(test_id=test_id)
             result = []
             for question in questions:
                 question_data = {
                     'id': question.id,
                     'question_text': question.question_text,
-                    'course_test_id': question.course_test_id,
+                    'course_test_id': question.test.id if question.test else None,
                     'question_order': question.question_order,
                     'points': question.points,
                     'question_type': question.question_type,

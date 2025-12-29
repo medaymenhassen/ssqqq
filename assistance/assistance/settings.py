@@ -26,7 +26,7 @@ import json
 import os
 
 def get_secret_key():
-    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', '..', 'database-config.json')
+    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'database-config.json')
     if os.path.exists(config_file):
         with open(config_file, 'r') as f:
             config = json.load(f)
@@ -176,7 +176,7 @@ import json
 import os
 
 def get_jwt_secret():
-    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', '..', 'database-config.json')
+    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'database-config.json')
     if os.path.exists(config_file):
         with open(config_file, 'r') as f:
             config = json.load(f)

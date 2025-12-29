@@ -216,6 +216,11 @@ public class OfferService {
                 .orElse(null); // Return null if not found
     }
     
+    // Get all pending offers for admin approval
+    public List<UserOffer> getAllPendingOffers() {
+        return userOfferRepository.findByApprovalStatus(ApprovalStatus.PENDING);
+    }
+    
     // Get user by email
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)

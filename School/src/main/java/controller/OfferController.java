@@ -14,6 +14,7 @@ import com.auth.model.User;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/offers")
@@ -200,25 +201,35 @@ public class OfferController {
     }
     
     // Admin approve an offer
-    @PutMapping("/{userOfferId}/approve")
+    @PostMapping("/{userOfferId}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserOffer> approveOffer(@PathVariable Long userOfferId) {
+    public ResponseEntity<Map<String, Object>> approveOffer(@PathVariable("userOfferId") Long userOfferId) {
         try {
             UserOffer userOffer = offerService.approveOffer(userOfferId);
-            return ResponseEntity.ok(userOffer);
-        } catch (RuntimeException e) {
+            // Return a simplified response to avoid potential serialization issues
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", userOffer.getId());
+            response.put("approvalStatus", userOffer.getApprovalStatus());
+            response.put("isActive", userOffer.getIsActive());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }
     
     // Admin reject an offer
-    @PutMapping("/{userOfferId}/reject")
+    @PostMapping("/{userOfferId}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserOffer> rejectOffer(@PathVariable Long userOfferId) {
+    public ResponseEntity<Map<String, Object>> rejectOffer(@PathVariable("userOfferId") Long userOfferId) {
         try {
             UserOffer userOffer = offerService.rejectOffer(userOfferId);
-            return ResponseEntity.ok(userOffer);
-        } catch (RuntimeException e) {
+            // Return a simplified response to avoid potential serialization issues
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", userOffer.getId());
+            response.put("approvalStatus", userOffer.getApprovalStatus());
+            response.put("isActive", userOffer.getIsActive());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -309,6 +320,18 @@ public class OfferController {
             return ResponseEntity.ok(Map.of("remainingMinutes", remainingMinutes));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Could not get remaining time: " + e.getMessage()));
+        }
+    }
+    
+    // Get all pending offers for admin approval
+    @GetMapping("/admin/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserOffer>> getAllPendingOffers() {
+        try {
+            List<UserOffer> pendingOffers = offerService.getAllPendingOffers();
+            return ResponseEntity.ok(pendingOffers);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
         }
     }
 }
