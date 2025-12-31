@@ -554,279 +554,204 @@ ngOnDestroy(): void {
     return hasMovement ? movementInfo : '';
   }
     
+  /**
+   * ✅ MÉTHODE CORRIGÉE : onHolisticResults
+   * - Gère les cas avec et sans VRM
+   * - Utilise Kalidokit pour l'animation
+   * - Logs réduits et pertinents
+   */
   private onHolisticResults(results: any): void {
-    console.log('🔍 onHolisticResults called');
+    console.log('onHolisticResults called');
     this.lastHolisticResults = results;
-  
-    // Affichage simple dans la console pour debug
-    console.log("Résultats Holistic :", results);
-  
-    // Dessiner les landmarks sur un canvas (optionnel, voir méthode drawGuides)
-    console.log('🎨 Drawing guides...');
+
+    // Dessiner les landmarks sur le canvas guide
     this.drawGuides(results);
-  
+
+    // Si pas de VRM, on continue quand même le traitement pour l'analyse backend
     if (!this.currentVrm) {
-      console.warn('🚫 No VRM avatar loaded');
-      console.log('🔍 Checking VRM loading status...');
-      console.log('Current VRM:', this.currentVrm);
-      console.log('VRM Model:', this.vrmModel);
-      console.log('Has scene:', !!this.scene);
-      console.log('Has renderer:', !!this.renderer);
-      console.log('Has camera:', !!this.camera);
-      console.log('VRM property:', this.vrm);
-      console.log('Is model loaded:', this.isModelLoaded);
-      
-      // Continue processing for backend sending even if VRM avatar is not loaded
-      console.log('🔄 Processing results for backend analysis even without VRM avatar...');
-      
-      // Process face landmarks for expressions (if VRM not loaded, still capture for analysis)
-      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-        console.log('👀 Processing face landmarks for analysis...');
-        // We can still process face data for analysis purposes
+      console.warn('No VRM avatar loaded - processing data for backend analysis only');
+      console.log('VRM Loading Status:', {
+        currentVrm: !!this.currentVrm,
+        vrmModel: !!this.vrmModel,
+        hasScene: !!this.scene,
+        hasRenderer: !!this.renderer,
+        isModelLoaded: this.isModelLoaded,
+      });
+
+      // Les données sont toujours capturées pour analyse backend
+      if (results.faceLandmarks?.length > 0) {
+        console.log('Face landmarks captured for analysis');
+      }
+      if (results.poseLandmarks?.length > 0) {
+        console.log('Pose landmarks captured for analysis');
+      }
+      if (results.leftHandLandmarks?.length > 0) {
+        console.log('Left hand captured for analysis');
+      }
+      if (results.rightHandLandmarks?.length > 0) {
+        console.log('Right hand captured for analysis');
       }
 
-      // Process pose landmarks for analysis (if VRM not loaded, still capture for analysis)
+      // Envoyer les résultats au service pour analyse
+      this.videoService.processHolisticResults(results);
+      return; // Skip VRM animation
+    }
+
+    console.log('VRM avatar is loaded - animating');
+
+    // ==========================================
+    // ANIMATION VRM AVEC KALIDOKIT
+    // ==========================================
+
+    try {
+      // --- VISAGE ---
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        try {
+          console.log('Processing face landmarks...');
+          const riggedFace = Kalidokit.Face.solve(
+            results.faceLandmarks,
+            this.kalidokitConfig!.face
+          );
+          if (riggedFace) {
+            this.rigFace(riggedFace);
+            console.log('Face animation applied');
+          }
+        } catch (error) {
+          console.error('Error in Kalidokit.Face.solve:', error);
+        }
+      }
+
+      // --- CORPS ---
       if (
         results.poseLandmarks &&
-        Array.isArray(results.za) &&
-        results.za.length === results.poseLandmarks.length &&
+        Array.isArray((results as any).za) &&
+        (results as any).za.length > 0 &&
         results.poseLandmarks.length > 0
       ) {
-        console.log('🕺 Processing pose landmarks for analysis...');
-        // We can still process pose data for analysis purposes
-      }
-      
-      // Process hand landmarks for analysis
-      if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
-        console.log('✋ Processing left hand landmarks for analysis...');
-      }
-      
-      if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
-        console.log('✋ Processing right hand landmarks for analysis...');
-      }
-      
-      // Still call drawGuides for visualization
-      console.log('🎨 Drawing guides even without VRM avatar...');
-      this.drawGuides(results);
-      
-      return; // Skip avatar animation but continue with other processing
-    }
-    console.log('✅ VRM avatar is loaded');
-    
-    // Send results to video service for analysis processing
-    console.log('🔄 Sending results to video service for analysis...');
-    this.videoService.processHolisticResults(results);
-    
-    // --- VISAGE ---
-    console.log('👀 Processing face landmarks...', {
-      hasFaceLandmarks: !!results.faceLandmarks,
-      faceLandmarksCount: results.faceLandmarks ? results.faceLandmarks.length : 0
-    });
-    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-      try {
-        console.log('🔄 Solving face with Kalidokit...');
-        const riggedFace = Kalidokit.Face.solve(
-          results.faceLandmarks,
-          this.kalidokitConfig!.face
-        );
-        console.log('✅ Face solved, applying to VRM...');
-        if (riggedFace) {
-          this.rigFace(riggedFace);
-          console.log('✅ Face applied to VRM');
-        }
-      } catch (error) {
-        console.error('❌ Error in Kalidokit.Face.solve:', error);
-      }
-    } else {
-      console.log('⏭️ No face landmarks to process');
-    }
-  
-    // --- CORPS ---
-    console.log('🕺 Processing pose landmarks...', {
-      hasPoseLandmarks: !!results.poseLandmarks,
-      poseLandmarksCount: results.poseLandmarks ? results.poseLandmarks.length : 0,
-      hasZa: !!results.za,
-      zaCount: results.za ? results.za.length : 0
-    });
-    if (
-      results.poseLandmarks &&
-      Array.isArray(results.za) &&
-      results.za.length === results.poseLandmarks.length &&
-      results.poseLandmarks.length > 0
-    ) {
-      try {
-        console.log('🔄 Solving pose with Kalidokit...');
-        const riggedPose = Kalidokit.Pose.solve(
-          results.za,             // landmarks 3D (za)
-          results.poseLandmarks,  // landmarks 2D
-          this.kalidokitConfig!.pose
-        );
-        console.log('✅ Pose solved, applying to VRM...');
-        if (riggedPose) {
-          this.rigPose(riggedPose);
-          console.log('✅ Pose applied to VRM');
-        }
-      } catch (error) {
-        console.error('❌ Error in Kalidokit.Pose.solve:', error);
-      }
-    } else {
-      console.log('⏭️ No pose landmarks to process');
-    }
-  
-    // --- MAINS ---
-    // Check for hand landmarks in the holistic results
-    // The holistic results might contain leftHandLandmarks and rightHandLandmarks
-    console.log('✋ Processing hand landmarks...', {
-      hasLeftHand: !!results.leftHandLandmarks,
-      leftHandCount: results.leftHandLandmarks ? results.leftHandLandmarks.length : 0,
-      hasRightHand: !!results.rightHandLandmarks,
-      rightHandCount: results.rightHandLandmarks ? results.rightHandLandmarks.length : 0
-    });
-    if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
-      try {
-        console.log('🔄 Solving left hand with Kalidokit...');
-        const riggedLeft = Kalidokit.Hand.solve(
-          results.leftHandLandmarks,
-          'Left'
-        );
-        console.log('✅ Left hand solved, applying to VRM...');
-        if (riggedLeft) {
-          this.applyHand('Left', riggedLeft);
-          console.log('✅ Left hand applied to VRM');
-        }
-      } catch (error) {
-        console.error('❌ Error in Kalidokit.Hand.solve for left hand:', error);
-      }
-    }
-  
-    if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
-      try {
-        console.log('🔄 Solving right hand with Kalidokit...');
-        const riggedRight = Kalidokit.Hand.solve(
-          results.rightHandLandmarks,
-          'Right'
-        );
-        console.log('✅ Right hand solved, applying to VRM...');
-        if (riggedRight) {
-          this.applyHand('Right', riggedRight);
-          console.log('✅ Right hand applied to VRM');
-        }
-      } catch (error) {
-        console.error('❌ Error in Kalidokit.Hand.solve for right hand:', error);
-      }
-    }
-      
-    // Additionally, check for multi-hand landmarks if available
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      console.log('✋ Processing multi-hand landmarks...');
-      for (let i = 0; i < results.multiHandLandmarks.length; i++) {
-        const handLandmarks = results.multiHandLandmarks[i];
-        if (handLandmarks && handLandmarks.length > 0) {
-          try {
-            // Determine if it's left or right hand based on x position or use both
-            const handLabel = i === 0 ? 'Left' : 'Right';
-            console.log(`🔄 Solving ${handLabel} hand (multi) with Kalidokit...`);
-            const riggedHand = Kalidokit.Hand.solve(
-              handLandmarks,
-              handLabel as 'Left' | 'Right'
-            );
-            console.log(`✅ ${handLabel} hand (multi) solved, applying to VRM...`);
-            if (riggedHand) {
-              this.applyHand(handLabel, riggedHand);
-              console.log(`✅ ${handLabel} hand (multi) applied to VRM`);
-            }
-          } catch (error) {
-            console.error('❌ Error in Kalidokit.Hand.solve for multi-hand:', error);
+        try {
+          console.log('Processing pose landmarks...');
+          const riggedPose = Kalidokit.Pose.solve(
+            (results as any).za, // landmarks 3D
+            results.poseLandmarks, // landmarks 2D
+            this.kalidokitConfig!.pose
+          );
+          if (riggedPose) {
+            this.rigPose(riggedPose);
+            console.log('Pose animation applied');
           }
+        } catch (error) {
+          console.error('Error in Kalidokit.Pose.solve:', error);
         }
       }
+
+      // --- MAIN GAUCHE ---
+      if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+        try {
+          console.log('Processing left hand...');
+          const riggedLeft = Kalidokit.Hand.solve(
+            results.leftHandLandmarks,
+            'Left'
+          );
+          if (riggedLeft) {
+            this.applyHand('Left', riggedLeft);
+            console.log('Left hand animation applied');
+          }
+        } catch (error) {
+          console.error('Error in Kalidokit.Hand.solve for left hand:', error);
+        }
+      }
+
+      // --- MAIN DROITE ---
+      if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+        try {
+          console.log('Processing right hand...');
+          const riggedRight = Kalidokit.Hand.solve(
+            results.rightHandLandmarks,
+            'Right'
+          );
+          if (riggedRight) {
+            this.applyHand('Right', riggedRight);
+            console.log('Right hand animation applied');
+          }
+        } catch (error) {
+          console.error('Error in Kalidokit.Hand.solve for right hand:', error);
+        }
+      }
+
+      // Mettre à jour le VRM
+      if (this.currentVrm && typeof (this.currentVrm as any).update === 'function') {
+        (this.currentVrm as any).update(0.016); // 60fps
+        console.log('VRM model updated');
+      }
+
+      // Envoyer les résultats au service pour analyse
+      this.videoService.processHolisticResults(results);
+    
+    } catch (error) {
+      console.error('Error in onHolisticResults animation:', error);
     }
-      
-    // Ensure the VRM model is updated to reflect the new bone positions
-    console.log('🔄 Updating VRM model...');
-    if (this.currentVrm && typeof this.currentVrm.update === 'function') {
-      this.currentVrm.update(0.016); // Update with fixed delta time (60fps)
-      console.log('✅ VRM model updated');
-    }
-    console.log('🏁 onHolisticResults completed');
   }
 
-  async setupHolistic(): Promise<void> {
-    console.log('🔍 Setting up holistic processing...');
-    
-    // Étape 1 : initialiser Holistic avec locateFile
-    console.log('🔄 Initializing Holistic...');
-    this.holistic = new Holistic({
-      locateFile: (file: string) =>
-        `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5/${file}`,
-    });
-    console.log('✅ Holistic initialized');
+  /**
+   * ✅ MÉTHODE OPTIMISÉE : setupHolistic
+   * - Logs minimalistes et pertinents
+   * - Structure claire en 4 étapes
+   * - Gestion d'erreur robuste
+   */
+  private async setupHolistic(): Promise<void> {
+    try {
+      console.log('Setting up Holistic MediaPipe...');
 
-    // Étape 2 : configurer les options du modèle
-    console.log('⚙️ Configuring Holistic options...');
-    this.holistic.setOptions({
-      modelComplexity: 1,
-      smoothLandmarks: true,
-      enableSegmentation: false,
-      refineFaceLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-    console.log('✅ Holistic options configured');
-
-    // Étape 3 : attacher la fonction de résultats
-    console.log('🔗 Setting up results callback...');
-    this.holistic.onResults((results: any) => {
-      console.log('📊 Holistic results received:', {
-        faceLandmarks: results.faceLandmarks ? results.faceLandmarks.length : 0,
-        poseLandmarks: results.poseLandmarks ? results.poseLandmarks.length : 0,
-        leftHandLandmarks: results.leftHandLandmarks ? results.leftHandLandmarks.length : 0,
-        rightHandLandmarks: results.rightHandLandmarks ? results.rightHandLandmarks.length : 0,
-        za: results.za ? results.za.length : 0
+      // ÉTAPE 1 : Initialiser Holistic
+      this.holistic = new Holistic({
+        locateFile: (file: string) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5/${file}`,
       });
-      console.log('🔍 Checking if results are valid for processing...');
-      console.log('✅ Has face landmarks:', !!results.faceLandmarks);
-      console.log('✅ Has pose landmarks:', !!results.poseLandmarks);
-      console.log('✅ Has za landmarks:', !!results.za);
-      console.log('✅ Has left hand landmarks:', !!results.leftHandLandmarks);
-      console.log('✅ Has right hand landmarks:', !!results.rightHandLandmarks);
-      console.log('🔄 Calling onHolisticResults with results...');
-      this.onHolisticResults(results);
-      console.log('🏁 onHolisticResults processing completed');
-    });
-    console.log('✅ Results callback set up');
-    
-    // Étape 4 : démarrer la caméra avec envoi de chaque frame
-    console.log('🎥 Setting up camera with video element...', !!this.videoElement?.nativeElement);
-    if (this.videoElement && this.videoElement.nativeElement) {
-      console.log('🔄 Creating MpCamera...');
+
+      // ÉTAPE 2 : Configurer les options
+      this.holistic.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        refineFaceLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      // ÉTAPE 3 : Attacher le callback
+      this.holistic.onResults((results: any) => {
+        if (results) {
+          this.onHolisticResults(results);
+        }
+      });
+
+      // ÉTAPE 4 : Setup de la caméra
+      if (!this.videoElement?.nativeElement) {
+        console.warn('Video element not available');
+        return;
+      }
+
       this.mpCamera = new MpCamera(this.videoElement.nativeElement, {
         onFrame: async () => {
-          console.log('🎬 onFrame called');
           if (this.holistic && this.videoElement?.nativeElement) {
-            console.log('📡 Sending frame to holistic...');
             try {
-              await this.holistic.send({ image: this.videoElement.nativeElement });
-              console.log('✅ Frame sent to holistic');
+              await this.holistic!.send({ image: this.videoElement!.nativeElement });
             } catch (e) {
-              console.error('❌ Erreur dans onFrame:', e);
+              console.error('Error sending frame to Holistic:', e);
             }
-          } else {
-            console.warn('⚠️ Cannot send frame - holistic or video element not available');
           }
         },
         width: 640,
         height: 480,
       });
-      console.log('✅ MpCamera created');
 
-      console.log('▶️ Starting camera...');
       this.mpCamera.start();
-      console.log('✅ Camera started');
-    } else {
-      console.warn('⚠️ Video element not available for camera setup');
+      console.log('Holistic setup complete');
+
+    } catch (error) {
+      console.error('Error setting up Holistic:', error);
+      throw error;
     }
-    console.log("onResults déclenché !");
   }
 
   private convertPoseToLandmarks(pose: any): any[] {
@@ -875,59 +800,162 @@ ngOnDestroy(): void {
   private drawGuides(results: any): void {
     const video = this.videoElement?.nativeElement as HTMLVideoElement;
     const canvas = this.guideCanvasRef?.nativeElement as HTMLCanvasElement;
-    if (!video || !canvas) return;
+
+    if (!video || !canvas) {
+      return;
+    }
 
     try {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+      // Adapter le canvas à la taille de la vidéo
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-        // 1. Dessiner la vidéo en fond (Optionnel si la vidéo est déjà visible derrière)
-        ctx.save();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Si vous voulez voir la vidéo webcam sur ce canvas, décommentez la ligne suivante :
-        // ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return;
+      }
 
-        // 2. Dessiner les landmarks
-        ctx.save();
-        
-        // --- POSE (Corps) ---
-        if (results.poseLandmarks) {
-            drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, 
-                {color: '#00FF00', lineWidth: 4});
-            drawLandmarks(ctx, results.poseLandmarks, 
-                {color: '#FF0000', lineWidth: 2});
-        }
+      // Nettoyer le canvas
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
 
-        // --- VISAGE (Maillage) ---
-        if (results.faceLandmarks) {
-            drawConnectors(ctx, results.faceLandmarks, FACEMESH_TESSELATION, 
-                {color: '#C0C0C070', lineWidth: 1});
-        }
+      // Commencer à dessiner les overlays
+      ctx.save();
 
-        // --- MAIN GAUCHE ---
-        if (results.leftHandLandmarks) {
-            drawConnectors(ctx, results.leftHandLandmarks, HAND_CONNECTIONS, 
-                {color: '#CC0000', lineWidth: 5});
-            drawLandmarks(ctx, results.leftHandLandmarks, 
-                {color: '#00FF00', lineWidth: 2});
-        }
+      // ==========================================
+      // 1️⃣ DESSINER LE CORPS (POSE)
+      // ==========================================
+      if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+        console.log('Drawing pose landmarks:', results.poseLandmarks.length);
 
-        // --- MAIN DROITE ---
-        if (results.rightHandLandmarks) {
-            drawConnectors(ctx, results.rightHandLandmarks, HAND_CONNECTIONS, 
-                {color: '#00CC00', lineWidth: 5});
-            drawLandmarks(ctx, results.rightHandLandmarks, 
-                {color: '#FF0000', lineWidth: 2});
-        }
+        // Dessiner les connexions (lignes entre les articulations)
+        drawConnectors(
+          ctx,
+          results.poseLandmarks,
+          POSE_CONNECTIONS,
+          { color: '#00FF00', lineWidth: 4 } // Vert pour le squelette
+        );
 
-        ctx.restore();
+        // Dessiner les points (cercles aux articulations)
+        drawLandmarks(
+          ctx,
+          results.poseLandmarks,
+          { color: '#FF0000', lineWidth: 2 } // Rouge pour les points
+        );
+      }
 
+      // ==========================================
+      // 2️⃣ DESSINER LE VISAGE
+      // ==========================================
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        console.log('Drawing face landmarks:', results.faceLandmarks.length);
+
+        // Dessiner le maillage du visage (tesselation)
+        drawConnectors(
+          ctx,
+          results.faceLandmarks,
+          FACEMESH_TESSELATION,
+          {
+            color: '#C0C0C070', // Gris semi-transparent
+            lineWidth: 1
+          }
+        );
+      }
+
+      // ==========================================
+      // 3️⃣ DESSINER LA MAIN GAUCHE
+      // ==========================================
+      if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+        console.log('Drawing left hand landmarks:', results.leftHandLandmarks.length);
+
+        // Dessiner les connexions (lignes entre les phalanges)
+        drawConnectors(
+          ctx,
+          results.leftHandLandmarks,
+          HAND_CONNECTIONS,
+          {
+            color: '#CC0000', // Rouge foncé pour la main gauche
+            lineWidth: 5
+          }
+        );
+
+        // Dessiner les points des doigts
+        drawLandmarks(
+          ctx,
+          results.leftHandLandmarks,
+          {
+            color: '#00FF00', // Vert pour les joints
+            lineWidth: 2
+          }
+        );
+      }
+
+      // ==========================================
+      // 4️⃣ DESSINER LA MAIN DROITE
+      // ==========================================
+      if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+        console.log('Drawing right hand landmarks:', results.rightHandLandmarks.length);
+
+        // Dessiner les connexions
+        drawConnectors(
+          ctx,
+          results.rightHandLandmarks,
+          HAND_CONNECTIONS,
+          {
+            color: '#00CC00', // Vert pour la main droite
+            lineWidth: 5
+          }
+        );
+
+        // Dessiner les points
+        drawLandmarks(
+          ctx,
+          results.rightHandLandmarks,
+          {
+            color: '#FF0000', // Rouge pour les joints
+            lineWidth: 2
+          }
+        );
+      }
+
+      // Afficher les infos de débogage
+      this.drawDebugInfo(ctx, results);
+
+      ctx.restore();
     } catch (error) {
-        console.warn("Error drawing guides", error);
+      console.warn('Error drawing guides:', error);
     }
+  }
+
+  /**
+   * ✅ NOUVELLE MÉTHODE : Affiche les informations de débogage sur le canvas
+   */
+  private drawDebugInfo(ctx: CanvasRenderingContext2D, results: any): void {
+    const padding = 15;
+    const lineHeight = 22;
+    let yPos = padding;
+
+    // Style du texte
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+
+    // Fonction pour dessiner du texte avec contour
+    const drawText = (text: string) => {
+      ctx.strokeText(text, padding, yPos);
+      ctx.fillText(text, padding, yPos);
+      yPos += lineHeight;
+    };
+
+    // Afficher les statistiques
+    drawText(`Pose: ${results.poseLandmarks ? results.poseLandmarks.length : 0} points`);
+    drawText(`Visage: ${results.faceLandmarks ? results.faceLandmarks.length : 0} points`);
+    drawText(`Main gauche: ${results.leftHandLandmarks ? results.leftHandLandmarks.length : 0} points`);
+    drawText(`Main droite: ${results.rightHandLandmarks ? results.rightHandLandmarks.length : 0} points`);
+    drawText(`Temps: ${new Date().toLocaleTimeString()}`);
   }
 
   private landmarkToWorld(
