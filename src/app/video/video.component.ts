@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, Input, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, OnChanges, SimpleChanges, ViewChild, ElementRef, Input, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { VideoService, BodyAnalysis } from '../video.service';
 import { AuthService, User } from '../auth.service';
@@ -9,11 +9,43 @@ import { VideoUploadService } from '../services/video-upload.service';
 import { DjDataService, DjangoUser, DjangoOffer, DjangoUserOffer, DjangoCourseLesson, DjangoTestQuestion } from '../services/dj-data.service';
 import { DjAuthService, DjUser } from '../services/dj-auth.service';
 
+// MediaPipe holistic import
+import { FACEMESH_TESSELATION, HAND_CONNECTIONS, Holistic, POSE_CONNECTIONS } from '@mediapipe/holistic';
+
+// Modern MediaPipe Tasks API
+import {
+  PoseLandmarker,
+  FaceLandmarker,
+  HandLandmarker,
+  FilesetResolver,
+  HolisticLandmarker,
+  DrawingUtils,
+  Landmark
+} from '@mediapipe/tasks-vision';
+
+// For drawing utilities
+import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+
+import { Camera, Camera as MpCamera } from '@mediapipe/camera_utils';
+
+
+
+import {
+  VRM,
+  VRMLoaderPlugin,
+  VRMUtils,
+  VRMHumanBoneName,
+  VRMExpressionPresetName,
+} from '@pixiv/three-vrm';
+
 // Import Three.js types
 import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
 import { OrbitControls } from 'three-stdlib';
-import { VRM, VRMUtils } from '@pixiv/three-vrm';
+import * as Kalidokit from 'kalidokit';
+
+
+import { THand } from 'kalidokit';
 
 interface PoseDataHistory {
   timestamp: number;
@@ -42,17 +74,24 @@ interface CapturedVideo {
   styleUrls: ['./video.component.scss'],
   imports: [CommonModule]
 })
-export class VideoComponent implements OnInit, AfterViewInit, OnDestroy {
+export class VideoComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   @ViewChild('videoElement') videoElement!: ElementRef;
   @ViewChild('canvasElement') canvasElement!: ElementRef;
   @ViewChild('threeDContainer') threeDContainer!: ElementRef;
 
+  // 3D View properties
+  showFull3DView = false;
+  
   // Three.js related properties
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private controls: OrbitControls | null = null;
   private carModel!: THREE.Group;
+  private vision!: any;
+  private clock = new THREE.Clock();
+  private holistic: Holistic | null = null;
+  private mpCamera: MpCamera | null = null;
   private isModelLoaded = false;
   showModelInfo = false;
   modelPosition = { x: 0, y: 0, z: 0 };
@@ -116,7 +155,6 @@ export class VideoComponent implements OnInit, AfterViewInit, OnDestroy {
   userOffersLoading = false;
   lessonsLoading = false;
   questionsLoading = false;
-  
   // Django authentication
   djUser: DjUser | null = null;
   private imageCaptureInterval: any;
@@ -125,9 +163,62 @@ export class VideoComponent implements OnInit, AfterViewInit, OnDestroy {
   public selectedImageFile: File | null = null;
   public isProcessingImage = false;
   
+  // Video frame capture interval for video files
+  private videoFrameCaptureInterval: any = null;
+  
+  // Landmark tracking for movement detection
+  private previousLandmarks: any = null;
+  private previousVrmBones: any = null;
+  
+  // Avatar bones information
+  private avatarBonesInfo: string = '';
+  
   // VRM properties
   private vrm: VRM | null = null;
   private vrmModel: THREE.Object3D | null = null;
+
+  // Holistic MediaPipe properties
+  private lastHolisticResults: any;
+  
+  // Kalidokit configuration
+  private kalidokitConfig: {
+    face: {
+      runtime: 'mediapipe' | 'tfjs';
+      video: HTMLVideoElement;
+      imageSize: {
+        height: number;
+        width: number;
+      };
+      smoothBlink: boolean;
+      blinkSettings: [number, number];
+    };
+    pose: {
+      runtime: 'mediapipe' | 'tfjs';
+      video: HTMLVideoElement;
+      imageSize: {
+        height: number;
+        width: number;
+      };
+      enableLegs: boolean;
+    };
+    stabilizeBlink: {
+      noWink: boolean;
+      maxRot: number;
+    };
+  } | null = null;
+  
+  // Canvas references for guides
+  @ViewChild('guideCanvas', { static: false }) guideCanvasRef!: ElementRef;
+  
+  // Hand position tracking
+  private leftHandWorld = new THREE.Vector3();
+  private rightHandWorld = new THREE.Vector3();
+  
+  // Current VRM reference for easier access
+  private currentVrm: VRM | null = null;
+  
+  // Subscription for body analysis
+  private bodyAnalysisSubscription: any = null;
 
   constructor(
     private videoService: VideoService,
@@ -162,6 +253,11 @@ export class VideoComponent implements OnInit, AfterViewInit, OnDestroy {
     // Set up body analysis subscription after view is initialized
     // This ensures we're definitely in the browser environment
     this.setupBodyAnalysisSubscription();
+    
+    // Update renderer size after view is initialized
+    setTimeout(() => {
+      this.updateRendererSize();
+    }, 100);
   }
 
 ngOnDestroy(): void {
@@ -184,8 +280,936 @@ ngOnDestroy(): void {
     if (this.videoService && typeof (this.videoService as any).dispose === 'function') {
       (this.videoService as any).dispose();
     }
+    
+    // Unsubscribe from body analysis subscription
+    if (this.bodyAnalysisSubscription) {
+      this.bodyAnalysisSubscription.unsubscribe();
+      this.bodyAnalysisSubscription = null;
+    }
   }
 }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['videoUrl'] && changes['videoUrl'].currentValue) {
+      // When video URL changes, ensure holistic processing is set up
+      console.log('Video URL changed, ensuring holistic setup');
+      // The video URL change is handled elsewhere in the component
+    }
+  }
+
+  toggleFull3DView(): void {
+    this.showFull3DView = !this.showFull3DView;
+    
+    // Update renderer size after view changes
+    setTimeout(() => {
+      this.updateRendererSize();
+    }, 100); // Small delay to ensure DOM updates
+  }
+
+  private updateRendererSize(): void {
+    if (this.threeDContainer && this.renderer && this.camera) {
+      const container = this.threeDContainer.nativeElement;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      this.renderer.setSize(width, height);
+      
+      // Update camera aspect ratio
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+  
+  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+    // Create a simple notification element
+    const notification = document.createElement('div');
+    notification.textContent = message;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.padding = '15px 20px';
+    notification.style.borderRadius = '8px';
+    notification.style.color = 'white';
+    notification.style.zIndex = '10000';
+    notification.style.fontWeight = 'bold';
+      
+    // Set color based on type
+    if (type === 'success') {
+      notification.style.backgroundColor = '#27ae60';
+    } else if (type === 'error') {
+      notification.style.backgroundColor = '#e74c3c';
+    } else {
+      notification.style.backgroundColor = '#3498db';
+    }
+      
+    // Add to document
+    document.body.appendChild(notification);
+      
+    // Remove after 5 seconds
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 5000);
+  }
+    
+  private displayAvatarBones(): void {
+    if (!this.currentVrm) {
+      this.avatarBonesInfo = 'No avatar loaded';
+      console.log(this.avatarBonesInfo);
+      this.showNotification('No avatar loaded', 'info');
+      return;
+    }
+      
+    if (this.currentVrm.humanoid) {
+      // VRM model with humanoid rigging
+      const humanoid = this.currentVrm.humanoid;
+      const boneList = [];
+        
+      // Get all available bone types
+      const boneTypes = Object.keys(VRMHumanBoneName);
+        
+      for (const boneType of boneTypes) {
+        const bone = humanoid.getNormalizedBoneNode(VRMHumanBoneName[boneType as keyof typeof VRMHumanBoneName]);
+        if (bone) {
+          boneList.push(`${boneType}: [${bone.position.x.toFixed(2)}, ${bone.position.y.toFixed(2)}, ${bone.position.z.toFixed(2)}]`);
+        }
+      }
+        
+      this.avatarBonesInfo = `VRM Avatar Bones (${boneList.length} total):\n${boneList.join('\n')}`;
+      console.log('VRM AVATAR BONES:', this.avatarBonesInfo);
+        
+      // Display the bone info in a notification
+      this.showNotification(`VRM Bones: ${boneList.length} total`, 'info');
+    } else {
+      // GLTF model without humanoid rigging - display general information
+      this.avatarBonesInfo = 'GLTF model loaded (no humanoid rigging) - Bones tracking not available';
+      console.log(this.avatarBonesInfo);
+        
+      // Display the info in a notification
+      this.showNotification('GLTF model (no bones tracking)', 'info');
+    }
+  }
+    
+  // Public method to get avatar bones info
+  getAvatarBonesInfo(): string {
+    return this.avatarBonesInfo;
+  }
+    
+  private calculateLandmarkMovement(prevLandmarks: any, currentLandmarks: any): string {
+    if (!prevLandmarks || !currentLandmarks) {
+      return 'No previous landmarks to compare';
+    }
+      
+    let movementInfo = 'Landmark Movement Differences:\n';
+      
+    // Compare pose landmarks if available
+    if (prevLandmarks.poseLandmarks && currentLandmarks.poseLandmarks) {
+      const prevPose = prevLandmarks.poseLandmarks;
+      const currPose = currentLandmarks.poseLandmarks;
+        
+      for (let i = 0; i < Math.min(prevPose.length, currPose.length); i++) {
+        const prev = prevPose[i];
+        const curr = currPose[i];
+          
+        if (prev && curr) {
+          const dx = Math.abs(curr.x - prev.x);
+          const dy = Math.abs(curr.y - prev.y);
+          const dz = Math.abs(curr.z - prev.z);
+          const movement = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            
+          if (movement > 0.01) { // Only show significant movements
+            movementInfo += `Pose ${i}: movement ${movement.toFixed(4)} (dx:${dx.toFixed(3)}, dy:${dy.toFixed(3)}, dz:${dz.toFixed(3)})\n`;
+          }
+        }
+      }
+    }
+      
+    // Compare face landmarks if available
+    if (prevLandmarks.faceLandmarks && currentLandmarks.faceLandmarks) {
+      const prevFace = prevLandmarks.faceLandmarks;
+      const currFace = currentLandmarks.faceLandmarks;
+        
+      for (let i = 0; i < Math.min(prevFace.length, currFace.length, 10); i++) { // Check first 10 for performance
+        const prev = prevFace[i];
+        const curr = currFace[i];
+          
+        if (prev && curr) {
+          const dx = Math.abs(curr.x - prev.x);
+          const dy = Math.abs(curr.y - prev.y);
+          const dz = Math.abs(curr.z - prev.z);
+          const movement = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            
+          if (movement > 0.01) {
+            movementInfo += `Face ${i}: movement ${movement.toFixed(4)} (dx:${dx.toFixed(3)}, dy:${dy.toFixed(3)}, dz:${dz.toFixed(3)})\n`;
+          }
+        }
+      }
+    }
+      
+    // Compare hand landmarks if available
+    if (prevLandmarks.leftHandLandmarks && currentLandmarks.leftHandLandmarks) {
+      const prevHand = prevLandmarks.leftHandLandmarks;
+      const currHand = currentLandmarks.leftHandLandmarks;
+        
+      for (let i = 0; i < Math.min(prevHand.length, currHand.length); i++) {
+        const prev = prevHand[i];
+        const curr = currHand[i];
+          
+        if (prev && curr) {
+          const dx = Math.abs(curr.x - prev.x);
+          const dy = Math.abs(curr.y - prev.y);
+          const dz = Math.abs(curr.z - prev.z);
+          const movement = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            
+          if (movement > 0.01) {
+            movementInfo += `Left Hand ${i}: movement ${movement.toFixed(4)} (dx:${dx.toFixed(3)}, dy:${dy.toFixed(3)}, dz:${dz.toFixed(3)})\n`;
+          }
+        }
+      }
+    }
+      
+    if (prevLandmarks.rightHandLandmarks && currentLandmarks.rightHandLandmarks) {
+      const prevHand = prevLandmarks.rightHandLandmarks;
+      const currHand = currentLandmarks.rightHandLandmarks;
+        
+      for (let i = 0; i < Math.min(prevHand.length, currHand.length); i++) {
+        const prev = prevHand[i];
+        const curr = currHand[i];
+          
+        if (prev && curr) {
+          const dx = Math.abs(curr.x - prev.x);
+          const dy = Math.abs(curr.y - prev.y);
+          const dz = Math.abs(curr.z - prev.z);
+          const movement = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            
+          if (movement > 0.01) {
+            movementInfo += `Right Hand ${i}: movement ${movement.toFixed(4)} (dx:${dx.toFixed(3)}, dy:${dy.toFixed(3)}, dz:${dz.toFixed(3)})\n`;
+          }
+        }
+      }
+    }
+      
+    return movementInfo;
+  }
+    
+  private getVrmBonesState(): any {
+    if (!this.currentVrm || !this.currentVrm.humanoid) {
+      // If no humanoid, return null or an empty object
+      return {};
+    }
+      
+    const humanoid = this.currentVrm.humanoid;
+    const boneState: any = {};
+      
+    // Get all available bone types
+    const boneTypes = Object.keys(VRMHumanBoneName);
+      
+    for (const boneType of boneTypes) {
+      const bone = humanoid.getNormalizedBoneNode(VRMHumanBoneName[boneType as keyof typeof VRMHumanBoneName]);
+      if (bone) {
+        boneState[boneType] = {
+          position: { x: bone.position.x, y: bone.position.y, z: bone.position.z },
+          rotation: { x: bone.rotation.x, y: bone.rotation.y, z: bone.rotation.z }
+        };
+      }
+    }
+      
+    return boneState;
+  }
+    
+  private calculateVrmBoneMovement(prevBones: any, currentBones: any): string {
+    if (!prevBones || !currentBones || Object.keys(prevBones).length === 0 || Object.keys(currentBones).length === 0) {
+      return '';
+    }
+      
+    let movementInfo = 'VRM Bone Movement Differences:\n';
+    let hasMovement = false;
+      
+    for (const boneType in currentBones) {
+      if (prevBones[boneType]) {
+        const prev = prevBones[boneType];
+        const curr = currentBones[boneType];
+          
+        // Calculate position difference
+        const posDx = Math.abs(curr.position.x - prev.position.x);
+        const posDy = Math.abs(curr.position.y - prev.position.y);
+        const posDz = Math.abs(curr.position.z - prev.position.z);
+        const posMovement = Math.sqrt(posDx*posDx + posDy*posDy + posDz*posDz);
+          
+        // Calculate rotation difference (simplified)
+        const rotDx = Math.abs(curr.rotation.x - prev.rotation.x);
+        const rotDy = Math.abs(curr.rotation.y - prev.rotation.y);
+        const rotDz = Math.abs(curr.rotation.z - prev.rotation.z);
+        const rotMovement = Math.sqrt(rotDx*rotDx + rotDy*rotDy + rotDz*rotDz);
+          
+        // Only report significant movements
+        if (posMovement > 0.001 || rotMovement > 0.01) {
+          movementInfo += `${boneType}: pos ${posMovement.toFixed(4)}, rot ${rotMovement.toFixed(4)}\n`;
+          hasMovement = true;
+        }
+      }
+    }
+      
+    return hasMovement ? movementInfo : '';
+  }
+    
+  private onHolisticResults(results: any): void {
+    console.log('🔍 onHolisticResults called');
+    this.lastHolisticResults = results;
+  
+    // Affichage simple dans la console pour debug
+    console.log("Résultats Holistic :", results);
+  
+    // Dessiner les landmarks sur un canvas (optionnel, voir méthode drawGuides)
+    console.log('🎨 Drawing guides...');
+    this.drawGuides(results);
+  
+    if (!this.currentVrm) {
+      console.warn('🚫 No VRM avatar loaded');
+      console.log('🔍 Checking VRM loading status...');
+      console.log('Current VRM:', this.currentVrm);
+      console.log('VRM Model:', this.vrmModel);
+      console.log('Has scene:', !!this.scene);
+      console.log('Has renderer:', !!this.renderer);
+      console.log('Has camera:', !!this.camera);
+      console.log('VRM property:', this.vrm);
+      console.log('Is model loaded:', this.isModelLoaded);
+      
+      // Continue processing for backend sending even if VRM avatar is not loaded
+      console.log('🔄 Processing results for backend analysis even without VRM avatar...');
+      
+      // Process face landmarks for expressions (if VRM not loaded, still capture for analysis)
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        console.log('👀 Processing face landmarks for analysis...');
+        // We can still process face data for analysis purposes
+      }
+
+      // Process pose landmarks for analysis (if VRM not loaded, still capture for analysis)
+      if (
+        results.poseLandmarks &&
+        Array.isArray(results.za) &&
+        results.za.length === results.poseLandmarks.length &&
+        results.poseLandmarks.length > 0
+      ) {
+        console.log('🕺 Processing pose landmarks for analysis...');
+        // We can still process pose data for analysis purposes
+      }
+      
+      // Process hand landmarks for analysis
+      if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+        console.log('✋ Processing left hand landmarks for analysis...');
+      }
+      
+      if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+        console.log('✋ Processing right hand landmarks for analysis...');
+      }
+      
+      // Still call drawGuides for visualization
+      console.log('🎨 Drawing guides even without VRM avatar...');
+      this.drawGuides(results);
+      
+      return; // Skip avatar animation but continue with other processing
+    }
+    console.log('✅ VRM avatar is loaded');
+    
+    // Send results to video service for analysis processing
+    console.log('🔄 Sending results to video service for analysis...');
+    this.videoService.processHolisticResults(results);
+    
+    // --- VISAGE ---
+    console.log('👀 Processing face landmarks...', {
+      hasFaceLandmarks: !!results.faceLandmarks,
+      faceLandmarksCount: results.faceLandmarks ? results.faceLandmarks.length : 0
+    });
+    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+      try {
+        console.log('🔄 Solving face with Kalidokit...');
+        const riggedFace = Kalidokit.Face.solve(
+          results.faceLandmarks,
+          this.kalidokitConfig!.face
+        );
+        console.log('✅ Face solved, applying to VRM...');
+        if (riggedFace) {
+          this.rigFace(riggedFace);
+          console.log('✅ Face applied to VRM');
+        }
+      } catch (error) {
+        console.error('❌ Error in Kalidokit.Face.solve:', error);
+      }
+    } else {
+      console.log('⏭️ No face landmarks to process');
+    }
+  
+    // --- CORPS ---
+    console.log('🕺 Processing pose landmarks...', {
+      hasPoseLandmarks: !!results.poseLandmarks,
+      poseLandmarksCount: results.poseLandmarks ? results.poseLandmarks.length : 0,
+      hasZa: !!results.za,
+      zaCount: results.za ? results.za.length : 0
+    });
+    if (
+      results.poseLandmarks &&
+      Array.isArray(results.za) &&
+      results.za.length === results.poseLandmarks.length &&
+      results.poseLandmarks.length > 0
+    ) {
+      try {
+        console.log('🔄 Solving pose with Kalidokit...');
+        const riggedPose = Kalidokit.Pose.solve(
+          results.za,             // landmarks 3D (za)
+          results.poseLandmarks,  // landmarks 2D
+          this.kalidokitConfig!.pose
+        );
+        console.log('✅ Pose solved, applying to VRM...');
+        if (riggedPose) {
+          this.rigPose(riggedPose);
+          console.log('✅ Pose applied to VRM');
+        }
+      } catch (error) {
+        console.error('❌ Error in Kalidokit.Pose.solve:', error);
+      }
+    } else {
+      console.log('⏭️ No pose landmarks to process');
+    }
+  
+    // --- MAINS ---
+    // Check for hand landmarks in the holistic results
+    // The holistic results might contain leftHandLandmarks and rightHandLandmarks
+    console.log('✋ Processing hand landmarks...', {
+      hasLeftHand: !!results.leftHandLandmarks,
+      leftHandCount: results.leftHandLandmarks ? results.leftHandLandmarks.length : 0,
+      hasRightHand: !!results.rightHandLandmarks,
+      rightHandCount: results.rightHandLandmarks ? results.rightHandLandmarks.length : 0
+    });
+    if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+      try {
+        console.log('🔄 Solving left hand with Kalidokit...');
+        const riggedLeft = Kalidokit.Hand.solve(
+          results.leftHandLandmarks,
+          'Left'
+        );
+        console.log('✅ Left hand solved, applying to VRM...');
+        if (riggedLeft) {
+          this.applyHand('Left', riggedLeft);
+          console.log('✅ Left hand applied to VRM');
+        }
+      } catch (error) {
+        console.error('❌ Error in Kalidokit.Hand.solve for left hand:', error);
+      }
+    }
+  
+    if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+      try {
+        console.log('🔄 Solving right hand with Kalidokit...');
+        const riggedRight = Kalidokit.Hand.solve(
+          results.rightHandLandmarks,
+          'Right'
+        );
+        console.log('✅ Right hand solved, applying to VRM...');
+        if (riggedRight) {
+          this.applyHand('Right', riggedRight);
+          console.log('✅ Right hand applied to VRM');
+        }
+      } catch (error) {
+        console.error('❌ Error in Kalidokit.Hand.solve for right hand:', error);
+      }
+    }
+      
+    // Additionally, check for multi-hand landmarks if available
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      console.log('✋ Processing multi-hand landmarks...');
+      for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+        const handLandmarks = results.multiHandLandmarks[i];
+        if (handLandmarks && handLandmarks.length > 0) {
+          try {
+            // Determine if it's left or right hand based on x position or use both
+            const handLabel = i === 0 ? 'Left' : 'Right';
+            console.log(`🔄 Solving ${handLabel} hand (multi) with Kalidokit...`);
+            const riggedHand = Kalidokit.Hand.solve(
+              handLandmarks,
+              handLabel as 'Left' | 'Right'
+            );
+            console.log(`✅ ${handLabel} hand (multi) solved, applying to VRM...`);
+            if (riggedHand) {
+              this.applyHand(handLabel, riggedHand);
+              console.log(`✅ ${handLabel} hand (multi) applied to VRM`);
+            }
+          } catch (error) {
+            console.error('❌ Error in Kalidokit.Hand.solve for multi-hand:', error);
+          }
+        }
+      }
+    }
+      
+    // Ensure the VRM model is updated to reflect the new bone positions
+    console.log('🔄 Updating VRM model...');
+    if (this.currentVrm && typeof this.currentVrm.update === 'function') {
+      this.currentVrm.update(0.016); // Update with fixed delta time (60fps)
+      console.log('✅ VRM model updated');
+    }
+    console.log('🏁 onHolisticResults completed');
+  }
+
+  async setupHolistic(): Promise<void> {
+    console.log('🔍 Setting up holistic processing...');
+    
+    // Étape 1 : initialiser Holistic avec locateFile
+    console.log('🔄 Initializing Holistic...');
+    this.holistic = new Holistic({
+      locateFile: (file: string) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5/${file}`,
+    });
+    console.log('✅ Holistic initialized');
+
+    // Étape 2 : configurer les options du modèle
+    console.log('⚙️ Configuring Holistic options...');
+    this.holistic.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      refineFaceLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+    console.log('✅ Holistic options configured');
+
+    // Étape 3 : attacher la fonction de résultats
+    console.log('🔗 Setting up results callback...');
+    this.holistic.onResults((results: any) => {
+      console.log('📊 Holistic results received:', {
+        faceLandmarks: results.faceLandmarks ? results.faceLandmarks.length : 0,
+        poseLandmarks: results.poseLandmarks ? results.poseLandmarks.length : 0,
+        leftHandLandmarks: results.leftHandLandmarks ? results.leftHandLandmarks.length : 0,
+        rightHandLandmarks: results.rightHandLandmarks ? results.rightHandLandmarks.length : 0,
+        za: results.za ? results.za.length : 0
+      });
+      console.log('🔍 Checking if results are valid for processing...');
+      console.log('✅ Has face landmarks:', !!results.faceLandmarks);
+      console.log('✅ Has pose landmarks:', !!results.poseLandmarks);
+      console.log('✅ Has za landmarks:', !!results.za);
+      console.log('✅ Has left hand landmarks:', !!results.leftHandLandmarks);
+      console.log('✅ Has right hand landmarks:', !!results.rightHandLandmarks);
+      console.log('🔄 Calling onHolisticResults with results...');
+      this.onHolisticResults(results);
+      console.log('🏁 onHolisticResults processing completed');
+    });
+    console.log('✅ Results callback set up');
+    
+    // Étape 4 : démarrer la caméra avec envoi de chaque frame
+    console.log('🎥 Setting up camera with video element...', !!this.videoElement?.nativeElement);
+    if (this.videoElement && this.videoElement.nativeElement) {
+      console.log('🔄 Creating MpCamera...');
+      this.mpCamera = new MpCamera(this.videoElement.nativeElement, {
+        onFrame: async () => {
+          console.log('🎬 onFrame called');
+          if (this.holistic && this.videoElement?.nativeElement) {
+            console.log('📡 Sending frame to holistic...');
+            try {
+              await this.holistic.send({ image: this.videoElement.nativeElement });
+              console.log('✅ Frame sent to holistic');
+            } catch (e) {
+              console.error('❌ Erreur dans onFrame:', e);
+            }
+          } else {
+            console.warn('⚠️ Cannot send frame - holistic or video element not available');
+          }
+        },
+        width: 640,
+        height: 480,
+      });
+      console.log('✅ MpCamera created');
+
+      console.log('▶️ Starting camera...');
+      this.mpCamera.start();
+      console.log('✅ Camera started');
+    } else {
+      console.warn('⚠️ Video element not available for camera setup');
+    }
+    console.log("onResults déclenché !");
+  }
+
+  private convertPoseToLandmarks(pose: any): any[] {
+    if (!pose) return [];
+    
+    // Convert our pose data to MediaPipe landmarks format
+    const landmarks: any[] = [];
+    
+    // Map pose keys to MediaPipe landmark indices
+    const poseKeys = Object.keys(pose);
+    
+    for (const key of poseKeys) {
+      const poseData = pose[key];
+      if (poseData && poseData.position) {
+        landmarks.push({
+          x: poseData.position.x || 0,
+          y: poseData.position.y || 0,
+          z: poseData.position.z || 0,
+          visibility: poseData.confidence || 0.8
+        });
+      }
+    }
+    
+    return landmarks;
+  }
+
+  private calculate3DLandmarks(landmarks2D: any[]): any[] {
+    // Simple conversion: use 2D landmarks as 3D with a default z value
+    // In a real implementation, you would use depth estimation
+    return landmarks2D.map(landmark => ({
+      ...landmark,
+      z: landmark.z || 0
+    }));
+  }
+
+  private extractFaceLandmarks(face: any): any[] {
+    // Convert our face data to MediaPipe face landmarks format
+    // This is a simplified version - you may need to adjust based on your actual face data structure
+    if (!face) return [];
+    
+    // Return a dummy array since we don't have the exact structure
+    // In a real implementation, you would map the face data properly
+    return [];
+  }
+
+  private drawGuides(results: any): void {
+    const video = this.videoElement?.nativeElement as HTMLVideoElement;
+    const canvas = this.guideCanvasRef?.nativeElement as HTMLCanvasElement;
+    if (!video || !canvas) return;
+
+    try {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // 1. Dessiner la vidéo en fond (Optionnel si la vidéo est déjà visible derrière)
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Si vous voulez voir la vidéo webcam sur ce canvas, décommentez la ligne suivante :
+        // ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        // 2. Dessiner les landmarks
+        ctx.save();
+        
+        // --- POSE (Corps) ---
+        if (results.poseLandmarks) {
+            drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, 
+                {color: '#00FF00', lineWidth: 4});
+            drawLandmarks(ctx, results.poseLandmarks, 
+                {color: '#FF0000', lineWidth: 2});
+        }
+
+        // --- VISAGE (Maillage) ---
+        if (results.faceLandmarks) {
+            drawConnectors(ctx, results.faceLandmarks, FACEMESH_TESSELATION, 
+                {color: '#C0C0C070', lineWidth: 1});
+        }
+
+        // --- MAIN GAUCHE ---
+        if (results.leftHandLandmarks) {
+            drawConnectors(ctx, results.leftHandLandmarks, HAND_CONNECTIONS, 
+                {color: '#CC0000', lineWidth: 5});
+            drawLandmarks(ctx, results.leftHandLandmarks, 
+                {color: '#00FF00', lineWidth: 2});
+        }
+
+        // --- MAIN DROITE ---
+        if (results.rightHandLandmarks) {
+            drawConnectors(ctx, results.rightHandLandmarks, HAND_CONNECTIONS, 
+                {color: '#00CC00', lineWidth: 5});
+            drawLandmarks(ctx, results.rightHandLandmarks, 
+                {color: '#FF0000', lineWidth: 2});
+        }
+
+        ctx.restore();
+
+    } catch (error) {
+        console.warn("Error drawing guides", error);
+    }
+  }
+
+  private landmarkToWorld(
+    landmark: { x: number; y: number; z: number },
+    refObj: THREE.Object3D
+  ): THREE.Vector3 {
+    const scale = refObj.scale.x; // Prend le scale de l'avatar/objet de référence
+    return new THREE.Vector3(
+      landmark.x * scale + refObj.position.x,
+      landmark.y * scale + refObj.position.y,
+      landmark.z * scale + refObj.position.z
+    );
+  }
+
+  private animateVrm(results: any) {
+    if (!this.currentVrm) return;
+
+    // --- VISAGE ---
+    if (results.faceLandmarks) {
+      const riggedFace = Kalidokit.Face.solve(
+        results.faceLandmarks,
+        this.kalidokitConfig!.face
+      );
+      if (riggedFace) {
+        this.rigFace(riggedFace);
+      }
+    }
+
+    if (
+      results.poseLandmarks &&
+      Array.isArray((results as any).za) &&
+      (results as any).za.length === results.poseLandmarks.length
+    ) {
+      const riggedPose = Kalidokit.Pose.solve(
+        (results as any).za,            // les landmarks 3D
+        results.poseLandmarks,          // les landmarks 2D
+        this.kalidokitConfig!.pose
+      );
+      if (riggedPose) {
+        this.rigPose(riggedPose);
+      }
+    }
+
+    // --- MAINS (pas d'options de configuration) ---
+    if (results.leftHandLandmarks) {
+      const riggedLeft = Kalidokit.Hand.solve(
+        results.leftHandLandmarks, 'Left'
+      );
+      if (riggedLeft) this.applyHand('Left', riggedLeft);
+
+    }
+
+    if (results.rightHandLandmarks) {
+      const riggedRight = Kalidokit.Hand.solve(
+        results.rightHandLandmarks, 'Right'
+      );
+      if (riggedRight) this.applyHand('Right', riggedRight);
+
+    }
+  }
+
+  private rigFace(riggedFace: Kalidokit.TFace) {
+    const vrm = this.currentVrm!;
+    // 2. Animation de la tête
+    this.rigRotation('Neck', riggedFace.head, 0.7);
+
+    // 3. Clin d’œil
+    const eyeBlinks = Kalidokit.Face.stabilizeBlink(
+      { l: 1 - riggedFace.eye.l, r: 1 - riggedFace.eye.r },
+      riggedFace.head.y
+    );
+    vrm.expressionManager?.setValue(VRMExpressionPresetName.Blink, eyeBlinks.l);
+
+    // 4. Bouche (morph targets)
+    // Mapping des clés source → clés de l'énumération VRMExpressionPresetName
+    const shapeMap = {
+      A: 'Aa',          // Viseme pour le son "A"
+      I: 'Ih',          // Viseme pour le son "I"
+      E: 'Ee',          // Viseme pour le son "E"
+      O: 'Ou',          // Viseme pour le son "O"
+      U: 'Uu',          // Viseme pour le son "U"
+
+      SMILE: 'Smile',           // Sourire
+      ANGRY: 'Angry',           // Bouche crispée (souvent associée à la colère)
+      FUN: 'Fun',               // Rire ou sourire plus marqué
+      SORROW: 'Sorrow',         // Tristesse (bouche tombante)
+      SURPRISED: 'Surprised'    // Bouche ouverte en "O"
+    } as const;
+
+
+    type SourceKey = keyof typeof riggedFace.mouth.shape;         // "A"|"E"|"I"|"O"|"U"
+    type PresetKey = typeof shapeMap[SourceKey];                   // "Aa"|"Ih"|"Ee"|"Ou"|"Uu"
+
+    (Object.keys(riggedFace.mouth.shape) as SourceKey[]).forEach(sourceKey => {
+      const target = riggedFace.mouth.shape[sourceKey];
+      const presetKey = shapeMap[sourceKey];
+      // cast presetKey en clé valide de VRMExpressionPresetName
+      const preset = VRMExpressionPresetName[presetKey as keyof typeof VRMExpressionPresetName];
+      const current = vrm.expressionManager?.getValue(preset) ?? 0;
+
+      vrm.expressionManager?.setValue(
+        preset,
+        THREE.MathUtils.lerp(current, target, 0.5)
+      );
+    });
+
+    if (vrm.expressionManager) {
+      vrm.expressionManager.update();
+    }
+
+  }
+
+  private rigPose(riggedPose: Kalidokit.TPose) {
+    const vrm = this.currentVrm!;
+
+    // Hips
+    if (riggedPose.Hips.rotation) {
+      this.rigRotation('Hips', riggedPose.Hips.rotation, 1, 0.3);
+    }
+
+    this.rigPosition('Hips', {
+      x: riggedPose.Hips.position.x,
+      y: riggedPose.Hips.position.y + 1,
+      z: -riggedPose.Hips.position.z
+    }, 1, 0.3);
+
+    if (riggedPose.Spine) {
+      this.rigRotation('Chest', riggedPose.Spine, 0.7, 0.3);
+      this.rigRotation('Spine', riggedPose.Spine, 0.5, 0.3);
+    }
+
+    // Bras
+    const arms: Array<keyof Kalidokit.TPose> = [
+      'LeftUpperArm', 'LeftLowerArm', 'RightUpperArm', 'RightLowerArm'
+    ];
+    for (const bone of arms) {
+      const vec = (riggedPose as any)[bone] as { x: number; y: number; z: number } | undefined;
+      if (vec) {
+        this.rigRotation(bone as any, vec, 1, 0.3);
+      } else {
+        console.warn(`⚠️ Aucune donnée de rotation pour ${bone}`);
+      }
+    }
+
+    // Jambes avec détection d'angle à 90 degrés
+    const legs: Array<keyof Kalidokit.TPose> = [
+      'LeftUpperLeg', 'LeftLowerLeg', 'RightUpperLeg', 'RightLowerLeg'
+    ];
+
+    // Calculer l'angle du genou droit
+    // Appliquer les rotations aux os des jambes (comportement normal)
+    for (const bone of legs) {
+      const vec = (riggedPose as any)[bone] as { x: number; y: number; z: number } | undefined;
+      if (vec) {
+        this.rigRotation(bone as any, vec, 1, 0.3);
+      } else {
+        console.warn(`⚠️ Aucune donnée de rotation pour ${bone}`);
+      }
+    }
+  }
+
+  // Dans applyHand(), assurez-vous que leftHandWorld est correctement mis à jour :
+  private applyHand(
+    side: 'Left' | 'Right',
+    riggedHand: Record<string, any>,
+  ): void {
+    if (!this.currentVrm) return;
+
+    const dampener = 1;
+    const lerpAmt = 0.6;
+
+    // ✅ CORRECTION: Calculer la position centrale de la main plus précisément
+    if (side === 'Left') {
+      const leftWrist = this.currentVrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.LeftHand);
+      if (leftWrist) {
+        leftWrist.getWorldPosition(this.leftHandWorld);
+        console.log(`👋 Main gauche mise à jour: (${this.leftHandWorld.x.toFixed(2)}, ${this.leftHandWorld.y.toFixed(2)}, ${this.leftHandWorld.z.toFixed(2)})`);
+      } else {
+        // Fallback: utiliser une position relative au VRM
+        if (this.currentVrm.scene) {
+          this.leftHandWorld.copy(this.currentVrm.scene.position);
+          this.leftHandWorld.x -= 0.5; // Main gauche
+          this.leftHandWorld.y += 1.2; // Hauteur d'épaule
+          console.log(`👋 Position de main fallback: (${this.leftHandWorld.x.toFixed(2)}, ${this.leftHandWorld.y.toFixed(2)}, ${this.leftHandWorld.z.toFixed(2)})`);
+        }
+      }
+    }
+
+    // Reste du code existant pour l'animation des doigts...
+    for (const [mpKey, rot] of Object.entries(riggedHand)) {
+      if (!rot) continue;
+      const base = mpKey.slice(side.length);
+      const swap = (side === 'Left' ? 'Right' : 'Left') + base;
+      const key = swap as keyof typeof VRMHumanBoneName;
+      const boneName = VRMHumanBoneName[key];
+      const node = this.currentVrm.humanoid.getNormalizedBoneNode(boneName);
+      if (!node) continue;
+
+      const quat = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(-rot.x * dampener, -rot.y * dampener, -rot.z * dampener, 'XYZ')
+      );
+      node.quaternion.slerp(quat, lerpAmt);
+    }
+  }
+
+  private setupKalidokit(): void {
+    // Configuration par défaut pour Kalidokit
+    this.kalidokitConfig = {
+      face: {
+        runtime: 'mediapipe' as const,
+        video: this.videoElement.nativeElement,
+        imageSize: {
+          height: 480,
+          width: 640
+        },
+        smoothBlink: true,
+        blinkSettings: [0.25, 0.75] // [seuil bas, seuil haut] pour la sensibilité du clignement
+      },
+      pose: {
+        runtime: 'mediapipe' as const,
+        video: this.videoElement.nativeElement,
+        imageSize: {
+          height: 480,
+          width: 640
+        },
+        enableLegs: true // Active le calcul des jambes
+      },
+      stabilizeBlink: {
+        noWink: false,   // Permet les clins d'œil
+        maxRot: 0.5      // Rotation maximale de la tête en radians avant interpolation
+      }
+    };
+  }
+
+  private rigRotation(
+    name: keyof typeof VRMHumanBoneName,
+    rotation: { x: number; y: number; z: number },
+    dampener = 1,
+    lerpAmt = 0.3
+  ) {
+    if (!this.currentVrm) return;
+
+    // Récupérer la node normalisée, qui absorbe les différences d'axes
+    const node = this.currentVrm.humanoid.getNormalizedBoneNode(
+      VRMHumanBoneName[name]
+    );
+    if (!node) return;
+
+    const euler = new THREE.Euler(
+      rotation.x * dampener,
+      rotation.y * dampener,
+      rotation.z * dampener,
+      'XYZ'
+    );
+    const quat = new THREE.Quaternion().setFromEuler(euler);
+    node.quaternion.slerp(quat, lerpAmt);
+  }
+
+  private rigPosition(
+    name: keyof typeof VRMHumanBoneName,
+    position: { x: number; y: number; z: number },
+    dampener = 1,
+    lerpAmt = 0.3
+  ) {
+    if (!this.currentVrm) return;
+
+    // Récupération du nœud osseux via le nouvel enum VRMHumanBoneName
+    const node = this.currentVrm.humanoid.getNormalizedBoneNode(
+      VRMHumanBoneName[name]
+    );
+    if (!node) return;
+
+    // Calcul du vecteur position avec atténuation
+    const vec = new THREE.Vector3(
+      position.x * dampener,
+      position.y * dampener,
+      position.z * dampener
+    );
+
+    // Interpolation linéaire de la position
+    node.position.lerp(vec, lerpAmt);
+  }
 
   private loadCurrentUser(): void {
     // Check if we're in browser environment
@@ -260,6 +1284,39 @@ ngOnDestroy(): void {
 
         await this.videoService.initializeMediaPipe();
         await this.videoService.setupHolistic(this.videoElement.nativeElement);
+        
+        // Initialize and setup the new holistic system for VRM animation
+        this.setupKalidokit();
+        await this.setupHolistic();
+        
+        // Ensure the holistic camera is properly initialized
+        if (this.mpCamera) {
+          console.log('Holistic camera already initialized');
+        } else {
+          console.warn('Holistic camera not initialized, initializing now...');
+          if (this.holistic && this.videoElement && this.videoElement.nativeElement) {
+            this.mpCamera = new MpCamera(this.videoElement.nativeElement, {
+              onFrame: async () => {
+                if (this.holistic && this.videoElement?.nativeElement) {
+                  try {
+                    await this.holistic.send({ image: this.videoElement.nativeElement });
+                  } catch (e) {
+                    console.error('Erreur dans onFrame:', e);
+                  }
+                }
+              },
+              width: 640,
+              height: 480,
+            });
+            
+            try {
+              this.mpCamera.start();
+              console.log('Holistic camera started successfully');
+            } catch (error) {
+              console.error('Error starting holistic camera:', error);
+            }
+          }
+        }
 
         this.isTracking = true;
         this.isVideoInitialized = true;
@@ -331,6 +1388,23 @@ ngOnDestroy(): void {
     if (this.videoService) {
       this.videoService.dispose();
     }
+    
+    // Stop the new holistic system
+    if (this.mpCamera) {
+      this.mpCamera.stop();
+      this.mpCamera = null;
+    }
+    
+    if (this.holistic) {
+      this.holistic.close();
+      this.holistic = null;
+    }
+    
+    // Unsubscribe from body analysis subscription
+    if (this.bodyAnalysisSubscription) {
+      this.bodyAnalysisSubscription.unsubscribe();
+      this.bodyAnalysisSubscription = null;
+    }
   }
   
   private startDataSending(): void {
@@ -352,7 +1426,9 @@ ngOnDestroy(): void {
       if (this.userId) {
 
         // Send movement data which includes captured images
-        this.sendMovementData();
+        this.sendMovementData().catch(error => {
+          console.error('Error in periodic sendMovementData:', error);
+        });
       } else {
         console.warn('❌ User ID not available, skipping data send');
         // Try to reload user if not available
@@ -417,25 +1493,36 @@ ngOnDestroy(): void {
       }
     }
   }
-  private sendMovementData(): void {
+  private async sendMovementData(): Promise<void> {
     // Check if we're in browser environment
     if (typeof window === 'undefined') {
       console.warn('Movement data sending skipped - not in browser environment');
       return;
     }
       
+    // Ensure user is loaded before sending data
+    if (!this.userId) {
+      console.log('User ID not available, attempting to load user...');
+      await this.loadCurrentUser();
+        
+      // Check again after loading user
+      if (!this.userId) {
+        console.error('❌ User ID still not available, skipping data send');
+        this.showNotification('❌ User ID not available, please log in', 'error');
+        return;
+      }
+    }
+      
     // Debug logging to understand what's happening
     console.log('🔍 sendMovementData called - images:', this.capturedImagesForSend.length, 'userId:', this.userId);
-        
+      
     // Vérifier que nous avons des images et des données
-    if (this.capturedImagesForSend.length === 0 || !this.userId) {
-      console.log('⚠️ Skipping data send - images:', this.capturedImagesForSend.length, 'userId:', this.userId);
+    if (this.capturedImagesForSend.length === 0) {
+      console.log('⚠️ Skipping data send - no images to send');
       return;
     }
-        
+      
     console.log('📤 Attempting to send', this.capturedImagesForSend.length, 'images to Django backend');
-        
-    
       
     // Format the data as "date-userid-movement_type"
     const dateStr = new Date().toLocaleDateString('fr-FR'); // Format: 26/12/2026
@@ -449,20 +1536,23 @@ ngOnDestroy(): void {
       timestamp: Date.now(),
       images: this.capturedImagesForSend // Send captured images
     };
-        
+      
     console.log('📡 Sending movement data:', movementDataToSend);
-        
+      
     // Send to Django backend via document service (the only service that handles this)
     console.log('🔌 Calling documentService.uploadMovementData');
     this.documentService.uploadMovementData(movementDataToSend).subscribe({
       next: (response) => {
         console.log('✅ Images envoyées avec succès:', response);
+        // Show success message
+        this.showNotification('📸 Une image a été prise et envoyée au backend - SUCCESS', 'success');
         // Clear the captured images after successful sending
         this.capturedImagesForSend = [];
-    
       },
       error: (error) => {
         console.error('❌ Erreur lors de l\'envoi des images:', error);
+        // Show failure message
+        this.showNotification('📸 Une image a été prise mais échec de l\'envoi au backend - FAILED', 'error');
         // Check if it's a 401 error - this might mean the token is not valid for Django
         if (error.status === 401) {
           console.warn('⚠️ 401 Unauthorized - token may not be valid for Django backend');
@@ -1792,7 +2882,7 @@ ngOnDestroy(): void {
     // Clear any existing interval
     this.stopImageCapture();
       
-    // Start capturing images every 3 seconds (more frequent but optimized)
+    // Start capturing images every 5 seconds (constant interval for both webcam and video files)
     this.imageCaptureInterval = setInterval(() => {
       const currentTime = Date.now();
       // Only capture if at least 1 second has passed since last capture to prevent overwhelming
@@ -1807,38 +2897,70 @@ ngOnDestroy(): void {
           
         // Ensure video is ready and has valid dimensions
         if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.min(video.videoWidth, 320); // Reduce size to optimize
-          canvas.height = Math.min(video.videoHeight, 240);
-            
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              
-            // Convert to data URL with JPEG format for smaller size
-            const imageData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality
-            this.capturedImages.push(imageData);
-              
-            // Keep only the last 5 images to prevent memory issues
-            if (this.capturedImages.length > 5) {
-              this.capturedImages.shift();
-            }
-              
-            // Also add to the movement-specific capture array
-            this.capturedImagesForSend.push(imageData);
-              
-              
-            // Keep only the last 3 images in the send array to prevent memory issues
-            if (this.capturedImagesForSend.length > 3) {
-              this.capturedImagesForSend.shift();
-              
-            }
-          }
+          this.captureImageFromVideo(video);
         } else {
           console.log('Video not ready for capture, readyState:', video.readyState, 'width:', video.videoWidth);
         }
       }
-    }, 3000); // Capture every 3 seconds
+    }, 5000); // Capture every 5 seconds for consistent timing
+  }
+    
+  private captureImageFromVideo(video: HTMLVideoElement): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.min(video.videoWidth, 320); // Reduce size to optimize
+    canvas.height = Math.min(video.videoHeight, 240);
+      
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+      // Convert to data URL with JPEG format for smaller size
+      const imageData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality
+        
+      console.log('📸 Image captured from video - length:', imageData.length);
+        
+      // Show notification about image capture
+      this.showNotification('📸 Une image a été prise', 'info');
+        
+      this.capturedImages.push(imageData);
+        
+      // Keep only the last 5 images to prevent memory issues
+      if (this.capturedImages.length > 5) {
+        this.capturedImages.shift();
+      }
+        
+      // Also add to the movement-specific capture array
+      this.capturedImagesForSend.push(imageData);
+        
+        
+      // Keep only the last 3 images in the send array to prevent memory issues
+      if (this.capturedImagesForSend.length > 3) {
+        this.capturedImagesForSend.shift();
+          
+      }
+        
+      // For video files, the captured images are added to capturedImagesForSend array
+      // which should be sent by the periodic sendMovementData call
+      // However, we'll ensure that sending is triggered after capturing
+      console.log('📊 Video frame added, total for sending:', this.capturedImagesForSend.length);
+      
+      // Check if we should trigger sending immediately for video captures
+      if (this.userId && this.capturedImagesForSend.length > 0) {
+        // Try to trigger the sending mechanism
+        console.log('Attempting to trigger send for video frame...');
+        
+        // Since we know frames are being captured but not sent, 
+        // let's call sendMovementData directly after a short delay
+        setTimeout(async () => {
+          if (this.capturedImagesForSend.length > 0) {
+            console.log('Directly triggering sendMovementData for video frames');
+            await this.sendMovementData();
+          }
+        }, 100); // Small delay to ensure everything is set up
+      } else {
+        console.log('⚠️ Cannot trigger send - userId:', this.userId, 'capturedImages:', this.capturedImagesForSend.length);
+      }
+    }
   }
 
   private stopImageCapture(): void {
@@ -1851,6 +2973,11 @@ ngOnDestroy(): void {
     if (this.imageCaptureInterval) {
       clearInterval(this.imageCaptureInterval);
       this.imageCaptureInterval = null;
+    }
+    
+    if (this.videoFrameCaptureInterval) {
+      clearInterval(this.videoFrameCaptureInterval);
+      this.videoFrameCaptureInterval = null;
     }
   }
 
@@ -2231,6 +3358,10 @@ ngOnDestroy(): void {
             // CRITICAL: Setup Holistic BEFORE starting analysis
             await this.videoService.setupHolistic(this.videoElement.nativeElement);
             
+            // Initialize and setup the new holistic system for VRM animation
+            this.setupKalidokit();
+            await this.setupHolistic();
+            
             this.isTracking = true;
             this.isVideoInitialized = true;
             this.analysisStartTime = Date.now();
@@ -2245,12 +3376,55 @@ ngOnDestroy(): void {
           }
         };
         
+        // Set up regular frame capture and holistic processing during video playback
+        let lastCaptureTime = -1; // Track last capture time
+        
+        // Ensure holistic is properly set up for video processing
+        if (!this.holistic) {
+          console.log('Holistic not initialized, setting up now for video...');
+          await this.setupHolistic();
+        } else {
+          console.log('Holistic already initialized, using existing instance');
+        }
+        
+        let lastHolisticTime = 0; // Track last holistic processing time
+        
+        this.videoElement.nativeElement.ontimeupdate = () => {
+          const currentTime = Math.floor(this.videoElement.nativeElement.currentTime);
+          
+          // Capture frame every 5 seconds based on video time
+          // Only capture if we're at a 5-second interval and haven't captured this second yet
+          if (currentTime % 5 === 0 && currentTime !== lastCaptureTime && currentTime > 0) {
+            lastCaptureTime = currentTime;
+            this.captureImageFromVideo(this.videoElement.nativeElement);
+          }
+          
+          // Process holistic tracking for avatar animation (throttled to avoid performance issues)
+          const now = Date.now();
+          if (this.holistic && this.videoElement && this.videoElement.nativeElement && (now - lastHolisticTime) > 66) { // Process ~15fps (every 66ms) for smoother animation
+            lastHolisticTime = now;
+            
+            // Run holistic detection on the current video frame
+            if (this.holistic && this.videoElement?.nativeElement) {
+              this.holistic.send({ image: this.videoElement.nativeElement }).catch((err: any) => {
+                console.warn('Holistic processing error:', err);
+              });
+            }
+          }
+        };
+        
         // Handle video end to stop analysis
         this.videoElement.nativeElement.onended = () => {
           this.stopVideoAnalysisLoop();
           this.stopImageCapture();
           this.stopDataSending();
           this.isTracking = false;
+          
+          // Clear the video frame capture interval if it exists
+          if (this.videoFrameCaptureInterval) {
+            clearInterval(this.videoFrameCaptureInterval);
+            this.videoFrameCaptureInterval = null;
+          }
         };
         
         this.videoElement.nativeElement.play();
@@ -2362,19 +3536,21 @@ ngOnDestroy(): void {
     this.scene = new THREE.Scene();
     // Remove background color to make it transparent
 
-    // Create camera with fixed aspect ratio
-    this.camera = new THREE.PerspectiveCamera(75, 400 / 300, 0.1, 1000);
-    this.camera.position.set(0, 0, 5); // Position camera in front of the VRM model
-
     // Create renderer with transparent background
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setSize(400, 300);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setClearColor(0x000000, 0); // Transparent background
     
     // Add renderer to container
     const container = this.threeDContainer.nativeElement;
     container.appendChild(this.renderer.domElement);
+    
+    // Set initial size based on container
+    this.updateRendererSize();
+    
+    // Create camera with proper aspect ratio
+    this.camera = new THREE.PerspectiveCamera(75, this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight, 0.1, 1000);
+    this.camera.position.set(0, 0, 5); // Position camera in front of the VRM model
 
     // Initialize OrbitControls for mouse interaction
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -2450,8 +3626,17 @@ ngOnDestroy(): void {
       // The VRM object should be available after processing
       let vrm = null;
       
-      // First try to get VRM from userData (common approach)
-      if (gltf.userData && gltf.userData['vrm']) {
+      // First try to get VRM from the VRM component in the scene
+      // Look for VRM objects in the scene hierarchy
+      for (const child of gltf.scene.children) {
+        if ((child as any).constructor.name === 'VRM' || (child as any).hasOwnProperty('humanoid')) {
+          vrm = child as any;
+          break;
+        }
+      }
+      
+      // If not found in scene children, try to get from userData
+      if (!vrm && gltf.userData && gltf.userData['vrm']) {
         vrm = gltf.userData['vrm'];
       }
       
@@ -2463,7 +3648,7 @@ ngOnDestroy(): void {
         }
       }
       
-      // If still not found, try to access from scene children
+      // If still not found, try to access from scene children via userData
       if (!vrm) {
         for (const child of gltf.scene.children) {
           if (child.userData && child.userData['vrm']) {
@@ -2476,35 +3661,66 @@ ngOnDestroy(): void {
       // If still no VRM found, we'll use the GLTF scene directly
       if (vrm) {
         console.log('VRM model found, setting up...');
-        
+                
         // Check if vrm has humanoid property (essential for pose control)
         if (!vrm.humanoid) {
           console.warn('VRM loaded but has no humanoid property - this may be a static model');
+        } else {
+          console.log('VRM has humanoid rigging - ready for pose animation');
         }
-        
+                
         // Set up the VRM model
         vrm.scene.rotation.y = Math.PI; // Rotate 180 degrees to face the camera
         this.scene.add(vrm.scene);
-        
+                
         this.vrm = vrm;
+        this.currentVrm = vrm; // Set currentVrm for holistic processing
         this.vrmModel = vrm.scene;
         this.isModelLoaded = true;
-        
+                
         console.log('VRM model loaded successfully');
+                
+        // Log the humanoid bones that are available
+        if (vrm.humanoid) {
+          console.log('Available humanoid bones:', Object.keys(vrm.humanoid.humanBones || {}));
+                  
+          // Verify that essential bones for animation are present
+          const essentialBones = ['hips', 'spine', 'chest', 'head', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm'];
+          const availableBones = Object.keys(vrm.humanoid.humanBones || {});
+          const missingEssentialBones = essentialBones.filter(bone => !availableBones.includes(bone));
+                  
+          if (missingEssentialBones.length > 0) {
+            console.warn('Missing essential bones for full animation:', missingEssentialBones);
+          } else {
+            console.log('All essential bones for animation are available');
+          }
+        }
+                
+        // Display avatar bones info when VRM is successfully loaded
+        setTimeout(() => {
+          this.displayAvatarBones();
+        }, 1000); // Delay to ensure model is fully loaded
+                
+        // Ensure the VRM is properly initialized for animation
+        if (this.currentVrm && typeof this.currentVrm.update === 'function') {
+          // Trigger an initial update to ensure the model is ready
+          this.currentVrm.update(0);
+        }
       } else {
         console.warn('VRM data not found, using GLTF scene directly as fallback');
-        
+                
         // Use the GLTF scene directly since no VRM data was found
         // This means the file might be a rigged model that's not a proper VRM
         gltf.scene.rotation.y = Math.PI; // Rotate 180 degrees to face the camera
         this.scene.add(gltf.scene);
-        
+                
         this.vrmModel = gltf.scene;
         this.isModelLoaded = true;
-        
+                
         // Set vrm to null since we're using the scene directly
         this.vrm = null;
-        
+        this.currentVrm = null; // Also set currentVrm to null
+                
         console.log('GLTF scene loaded as fallback');
       }
     } catch (error) {
@@ -2541,6 +3757,8 @@ ngOnDestroy(): void {
 
   private lastFrameTime = 0;
 
+
+  
   private animate = (): void => {
     if (typeof window === 'undefined') return;
 
@@ -2555,9 +3773,15 @@ ngOnDestroy(): void {
     this.updateModelPosition();
 
     // Update VRM with proper deltaTime
-    if (this.vrm && this.bodyAnalysis?.pose) {
+    if (this.vrm) {
       this.vrm.update(Math.min(deltaTime, 0.016)); // Cap at 60fps
-      this.updateVRMBones(this.bodyAnalysis.pose);
+      
+      // Use holistic results if available, otherwise fall back to body analysis pose
+      if (this.lastHolisticResults) {
+        this.updateVRMBones(null); // Pass null since we'll use holistic results inside
+      } else if (this.bodyAnalysis?.pose) {
+        this.updateVRMBones(this.bodyAnalysis.pose);
+      }
     }
 
     // Update controls
@@ -2624,82 +3848,103 @@ ngOnDestroy(): void {
   }
   
   private updateVRMBones(pose: any): void {
-    if (typeof window === 'undefined' || !this.vrm?.humanoid) {
+    if (typeof window === 'undefined' || !this.vrm) {
       return;
     }
+    
+    // Set the current VRM for use in the new methods
+    this.currentVrm = this.vrm;
+    
+    // Check if we have holistic results to animate with
+    if (this.lastHolisticResults) {
+      this.animateVrm(this.lastHolisticResults);
+    } else if (pose) {
+      // Fallback to the existing logic if no holistic results but pose is provided
+      if (!this.vrm?.humanoid) {
+        return;
+      }
 
-    try {
-      // Helper function to safely get and rotate bone
-      const rotateBone = (boneName: string, rotX: number, rotY: number, rotZ: number) => {
-        const bone = this.vrm?.humanoid?.getRawBoneNode(boneName as any);
-        if (bone) {
-          bone.rotation.x = rotX;
-          bone.rotation.y = rotY;
-          bone.rotation.z = rotZ;
+      try {
+        // Helper function to safely get and rotate bone
+        const rotateBone = (boneName: string, rotX: number, rotY: number, rotZ: number) => {
+          const bone = this.vrm?.humanoid?.getRawBoneNode(boneName as any);
+          if (bone) {
+            bone.rotation.x = rotX;
+            bone.rotation.y = rotY;
+            bone.rotation.z = rotZ;
+          }
+        };
+
+        // Head rotation based on head position
+        const head = pose['Head'];
+        if (head?.position) {
+          const headX = (head.position.y - 0.5) * Math.PI; // Pitch
+          const headY = -(head.position.x - 0.5) * Math.PI; // Yaw
+          rotateBone('head', headX * 0.5, headY * 0.5, 0);
         }
-      };
 
-      // Head rotation based on head position
-      const head = pose['Head'];
-      if (head?.position) {
-        const headX = (head.position.y - 0.5) * Math.PI; // Pitch
-        const headY = -(head.position.x - 0.5) * Math.PI; // Yaw
-        rotateBone('head', headX * 0.5, headY * 0.5, 0);
+        // Spine rotation based on shoulder alignment
+        const leftShoulder = pose['LeftShoulder'];
+        const rightShoulder = pose['RightShoulder'];
+        
+        if (leftShoulder?.position && rightShoulder?.position) {
+          const shoulderDiff = leftShoulder.position.y - rightShoulder.position.y;
+          const shoulderAngle = Math.atan2(shoulderDiff, 0.3) * 0.3;
+          rotateBone('spine', 0, 0, shoulderAngle);
+        }
+
+        // Left arm based on shoulder-elbow-wrist
+        const leftShoulder_pos = pose['LeftShoulder']?.position;
+        const leftElbow = pose['LeftElbow']?.position;
+        const leftWrist = pose['LeftWrist']?.position;
+
+        if (leftShoulder_pos && leftElbow && leftWrist) {
+          const elbowAngle = this.calculateBoneAngle(leftShoulder_pos, leftElbow, leftWrist);
+          rotateBone('leftUpperArm', -0.2, -0.3, 0);
+          rotateBone('leftLowerArm', -elbowAngle * 0.3, 0, 0);
+        }
+
+        // Right arm (mirror of left)
+        const rightShoulder_pos = pose['RightShoulder']?.position;
+        const rightElbow = pose['RightElbow']?.position;
+        const rightWrist = pose['RightWrist']?.position;
+
+        if (rightShoulder_pos && rightElbow && rightWrist) {
+          const elbowAngle = this.calculateBoneAngle(rightShoulder_pos, rightElbow, rightWrist);
+          rotateBone('rightUpperArm', -0.2, 0.3, 0);
+          rotateBone('rightLowerArm', -elbowAngle * 0.3, 0, 0);
+        }
+
+        // Hip and leg rotations
+        const leftHip = pose['LeftHip']?.position;
+        const rightHip = pose['RightHip']?.position;
+        
+        if (leftHip && rightHip) {
+          const hipDiff = leftHip.y - rightHip.y;
+          rotateBone('hips', 0, 0, hipDiff * 0.2);
+        }
+
+        // Update hands based on hand tracking data
+        if (this.bodyAnalysis?.hands) {
+          this.updateVRMHands(this.bodyAnalysis.hands);
+        }
+        
+        // Update face expressions based on face tracking data
+        if (this.bodyAnalysis?.face) {
+          this.updateVRMFace(this.bodyAnalysis.face);
+        }
+
+      } catch (error) {
+        console.warn('Erreur lors de la mise à jour des bones VRM:', error);
       }
-
-      // Spine rotation based on shoulder alignment
-      const leftShoulder = pose['LeftShoulder'];
-      const rightShoulder = pose['RightShoulder'];
-      
-      if (leftShoulder?.position && rightShoulder?.position) {
-        const shoulderDiff = leftShoulder.position.y - rightShoulder.position.y;
-        const shoulderAngle = Math.atan2(shoulderDiff, 0.3) * 0.3;
-        rotateBone('spine', 0, 0, shoulderAngle);
+    }
+    
+    // Make sure to update the VRM if it exists
+    if (this.currentVrm) {
+      // Only update if it has the update method (VRM models have it, GLTF models don't)
+      if (typeof this.currentVrm.update === 'function') {
+        this.currentVrm.update(0.016); // Update with fixed delta time
       }
-
-      // Left arm based on shoulder-elbow-wrist
-      const leftShoulder_pos = pose['LeftShoulder']?.position;
-      const leftElbow = pose['LeftElbow']?.position;
-      const leftWrist = pose['LeftWrist']?.position;
-
-      if (leftShoulder_pos && leftElbow && leftWrist) {
-        const elbowAngle = this.calculateBoneAngle(leftShoulder_pos, leftElbow, leftWrist);
-        rotateBone('leftUpperArm', -0.2, -0.3, 0);
-        rotateBone('leftLowerArm', -elbowAngle * 0.3, 0, 0);
-      }
-
-      // Right arm (mirror of left)
-      const rightShoulder_pos = pose['RightShoulder']?.position;
-      const rightElbow = pose['RightElbow']?.position;
-      const rightWrist = pose['RightWrist']?.position;
-
-      if (rightShoulder_pos && rightElbow && rightWrist) {
-        const elbowAngle = this.calculateBoneAngle(rightShoulder_pos, rightElbow, rightWrist);
-        rotateBone('rightUpperArm', -0.2, 0.3, 0);
-        rotateBone('rightLowerArm', -elbowAngle * 0.3, 0, 0);
-      }
-
-      // Hip and leg rotations
-      const leftHip = pose['LeftHip']?.position;
-      const rightHip = pose['RightHip']?.position;
-      
-      if (leftHip && rightHip) {
-        const hipDiff = leftHip.y - rightHip.y;
-        rotateBone('hips', 0, 0, hipDiff * 0.2);
-      }
-
-      // Update hands based on hand tracking data
-      if (this.bodyAnalysis?.hands) {
-        this.updateVRMHands(this.bodyAnalysis.hands);
-      }
-      
-      // Update face expressions based on face tracking data
-      if (this.bodyAnalysis?.face) {
-        this.updateVRMFace(this.bodyAnalysis.face);
-      }
-
-    } catch (error) {
-      console.warn('Erreur lors de la mise à jour des bones VRM:', error);
     }
   }
 
@@ -2786,13 +4031,8 @@ ngOnDestroy(): void {
       console.warn('Window resize handling skipped - not in browser environment');
       return;
     }
-    
-    if (this.camera && this.renderer && this.threeDContainer) {
-      const container = this.threeDContainer.nativeElement;
-      this.camera.aspect = container.clientWidth / container.clientHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(container.clientWidth, container.clientHeight);
-    }
+        
+    this.updateRendererSize();
   }
   
   // Load Django autonomous data
@@ -3022,12 +4262,15 @@ ngOnDestroy(): void {
       // Use analyzeFrame instead of analyzeStaticContent
       await (this.videoService as any).analyzeFrame(video);
         
-      // Capture frame for sending
+      // The body analysis subscription should automatically trigger holistic processing
+      // but we'll also capture frame for sending
       this.captureVideoFrameImage(video);
         
       // Send data immediately for video processing
       if (this.userId && this.capturedImagesForSend.length > 0) {
-        this.sendMovementData();
+        this.sendMovementData().catch(error => {
+          console.error('Error sending video frame data:', error);
+        });
       }
     } catch (error) {
       console.error('Erreur lors de l\'analyse de la frame vidéo:', error);
@@ -3035,18 +4278,27 @@ ngOnDestroy(): void {
   }
   
   private captureVideoFrameImage(video: HTMLVideoElement): void {
+    console.log('📷 Starting captureVideoFrameImage...');
     // Check if we're in browser environment
     if (typeof window === 'undefined') {
       console.warn('Frame capture skipped - not in browser environment');
       return;
     }
     
+    console.log('✅ Browser environment confirmed');
+    
     // Ensure video is ready and has valid dimensions
     if (video.readyState !== video.HAVE_ENOUGH_DATA || 
         video.videoWidth === 0 || 
         video.videoHeight === 0) {
+      console.warn('⚠️ Video not ready or invalid dimensions');
+      console.log('Video readyState:', video.readyState);
+      console.log('Video width:', video.videoWidth);
+      console.log('Video height:', video.videoHeight);
       return;
     }
+    
+    console.log('✅ Video is ready for capture');
     
     const canvas = document.createElement('canvas');
     canvas.width = Math.min(video.videoWidth, 320); // Reduce size to optimize
@@ -3054,12 +4306,16 @@ ngOnDestroy(): void {
     
     const ctx = canvas.getContext('2d');
     if (ctx) {
+      console.log('🎨 Drawing video frame to canvas...');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
       // Convert to data URL with JPEG format for smaller size
       const imageData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality
       
       console.log('📸 Frame captured - image length:', imageData.length);
+      
+      // Show notification about frame capture
+      this.showNotification('📸 Une image a été prise', 'info');
       
       // Add to the captured images array for processing
       this.capturedImages.push(imageData);
@@ -3078,6 +4334,26 @@ ngOnDestroy(): void {
       }
       
       console.log('📊 Images for send array length:', this.capturedImagesForSend.length);
+      
+      // Immediately trigger sending if we have user ID
+      if (this.userId) {
+        console.log('🔄 User ID available, preparing to send image...');
+        this.sendMovementData().catch(error => {
+          console.error('❌ Error sending captured image:', error);
+        });
+      } else {
+        console.warn('⚠️ No user ID available, image will be sent when user is loaded');
+        // Try to load user and then send
+        this.loadCurrentUser();
+        if (this.userId) {
+          console.log('🔄 User loaded, preparing to send image...');
+          this.sendMovementData().catch(error => {
+            console.error('❌ Error sending captured image after user load:', error);
+          });
+        }
+      }
+    } else {
+      console.error('❌ Could not get canvas context');
     }
   }
 }

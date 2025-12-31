@@ -71,6 +71,25 @@ $bg-light: #ecf0f1;
   overflow-y: auto;
 }
 
+// Override for when we want 3D view to be main focus
+.main-content.full-3d {
+  grid-template-columns: 1fr; // Full width for 3D view
+  grid-template-rows: 1fr;
+  height: 100%;
+}
+
+.main-content.full-3d .three-d-section {
+  grid-column: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content.full-3d .three-d-container {
+  height: 100%;
+  flex: 1;
+}
+
 @media (max-width: 1024px) {
   .main-content {
     grid-template-columns: 1fr;
@@ -545,13 +564,23 @@ $bg-light: #ecf0f1;
   
   .three-d-container {
     width: 100%;
-    height: 300px;
+    height: 100vh;
     border: 1px solid #ddd;
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 15px;
     background-color: transparent;
     position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .three-d-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
   }
   
   .model-info {

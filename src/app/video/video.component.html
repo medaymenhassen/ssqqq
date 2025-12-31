@@ -17,7 +17,7 @@
     </div>
   </header>
 
-  <div class="main-content">
+  <div class="main-content" [ngClass]="{ 'full-3d': showFull3DView }">
     <section class="video-section">
       <div class="video-upload-section" *ngIf="!isVideoInitialized && !videoUrl">
         <h3>📤 Charger une Vidéo</h3>
@@ -87,7 +87,12 @@
 
     <!-- 3D Model Section -->
     <section class="three-d-section">
-      <h2>👤 Personnage 3D Interactif</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2>👤 Personnage 3D Interactif</h2>
+        <button class="btn btn-info" (click)="toggleFull3DView()">
+          {{ showFull3DView ? '◀️ Retour Vue Normale' : '🎬 Vue Plein Écran' }}
+        </button>
+      </div>
       <div class="three-d-container" #threeDContainer></div>
       <div class="model-info" *ngIf="showModelInfo">
         <p>Ce personnage 3D réagit aux mouvements de votre corps. Cliquez sur le modèle pour afficher/masquer cette information.</p>

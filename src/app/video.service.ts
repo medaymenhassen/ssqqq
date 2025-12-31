@@ -251,6 +251,11 @@ export class VideoService {
     }
   }
 
+  // Public method to process holistic results from the component
+  processHolisticResults(results: any): void {
+    this.processResults(results);
+  }
+
   private processResults(results: any): void {
     if (!results) {
       return;
