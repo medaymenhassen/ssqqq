@@ -122,7 +122,7 @@ export class VideoComponent implements OnInit, AfterViewInit, OnDestroy, OnChang
   // For periodic data sending
   private dataSendInterval: any;
   private lastMovementDetection: { timestamp: number, type: string } | null = null;
-  private capturedImagesForSend: string[] = [];
+  private capturedImagesForSend: Array<{image: string, detectionData: any}> = [];
   private lastCaptureTime: number = 0;
   
   // For temporary video creation
@@ -140,7 +140,7 @@ export class VideoComponent implements OnInit, AfterViewInit, OnDestroy, OnChang
   @Input() lessonId: number | null | undefined = null;
   
   // For image capture functionality
-  capturedImages: string[] = [];
+  capturedImages: Array<{image: string, detectionData: any}> = [];
   
   // Django autonomous data
   djangoUsers: DjangoUser[] = [];
@@ -684,12 +684,645 @@ ngOnDestroy(): void {
         console.log('VRM model updated');
       }
 
+      // Log detailed information about the landmarks and detected movements
+      console.log('🎯 Processing holistic results with landmarks:');
+      
+      // Log face landmarks if present
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        console.log('   👤 Face landmarks detected:', results.faceLandmarks.length, 'points');
+        
+        // Extract and log face expression
+        const faceExpression = this.extractExpressionFromFace(results.faceLandmarks);
+        console.log('   👤 Face expression detected:', faceExpression);
+      }
+      
+      // Log left hand landmarks if present
+      if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+        console.log('   ✋ Left hand landmarks detected:', results.leftHandLandmarks.length, 'points');
+        
+        // Extract and log left hand gesture
+        const leftGesture = this.recognizeHandGesture(results.leftHandLandmarks);
+        console.log('   ✋ Left hand gesture detected:', leftGesture);
+      }
+      
+      // Log right hand landmarks if present
+      if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+        console.log('   ✋ Right hand landmarks detected:', results.rightHandLandmarks.length, 'points');
+        
+        // Extract and log right hand gesture
+        const rightGesture = this.recognizeHandGesture(results.rightHandLandmarks);
+        console.log('   ✋ Right hand gesture detected:', rightGesture);
+      }
+      
+      // Log pose landmarks if present
+      if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+        console.log('   🧍 Pose landmarks detected:', results.poseLandmarks.length, 'points');
+      }
+      
       // Envoyer les résultats au service pour analyse
       this.videoService.processHolisticResults(results);
-    
+      
+      // Also update the last holistic results with the detected movements for later use
+      if (!this.lastHolisticResults) {
+        this.lastHolisticResults = {};
+      }
+      
+      // Store the detected movements in the last results
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        const faceExpression = this.extractExpressionFromFace(results.faceLandmarks);
+        (this.lastHolisticResults as any).detectedFaceExpression = faceExpression;
+        
+        // Update body analysis with detected expression
+        if (!this.bodyAnalysis) {
+          this.bodyAnalysis = {
+            pose: null,
+            face: null,
+            hands: { left: null, right: null },
+            isAnalyzing: false,
+            bodyMetrics: {
+              posture: 'Neutre',
+              faceExpression: faceExpression,
+              leftGesture: 'Aucun',
+              rightGesture: 'Aucun'
+            }
+          };
+        } else {
+          if (!this.bodyAnalysis.bodyMetrics) {
+            this.bodyAnalysis.bodyMetrics = {
+              posture: 'Neutre',
+              faceExpression: faceExpression,
+              leftGesture: 'Aucun',
+              rightGesture: 'Aucun'
+            };
+          } else {
+            this.bodyAnalysis.bodyMetrics.faceExpression = faceExpression;
+          }
+        }
+      }
+      
+      if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+        const leftGesture = this.recognizeHandGesture(results.leftHandLandmarks);
+        (this.lastHolisticResults as any).detectedLeftGesture = leftGesture;
+        
+        // Update body analysis with detected left hand gesture
+        if (!this.bodyAnalysis) {
+          this.bodyAnalysis = {
+            pose: null,
+            face: null,
+            hands: { left: { gesture: leftGesture }, right: null },
+            isAnalyzing: false,
+            bodyMetrics: {
+              posture: 'Neutre',
+              faceExpression: 'Neutre',
+              leftGesture: leftGesture,
+              rightGesture: 'Aucun'
+            }
+          };
+        } else {
+          if (!this.bodyAnalysis.hands) {
+            this.bodyAnalysis.hands = { left: { gesture: leftGesture }, right: null };
+          } else {
+            if (!this.bodyAnalysis.hands.left) {
+              this.bodyAnalysis.hands.left = { gesture: leftGesture };
+            } else {
+              this.bodyAnalysis.hands.left.gesture = leftGesture;
+            }
+          }
+          
+          if (this.bodyAnalysis.bodyMetrics) {
+            this.bodyAnalysis.bodyMetrics.leftGesture = leftGesture;
+          }
+        }
+      }
+      
+      if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+        const rightGesture = this.recognizeHandGesture(results.rightHandLandmarks);
+        (this.lastHolisticResults as any).detectedRightGesture = rightGesture;
+        
+        // Update body analysis with detected right hand gesture
+        if (!this.bodyAnalysis) {
+          this.bodyAnalysis = {
+            pose: null,
+            face: null,
+            hands: { left: null, right: { gesture: rightGesture } },
+            isAnalyzing: false,
+            bodyMetrics: {
+              posture: 'Neutre',
+              faceExpression: 'Neutre',
+              leftGesture: 'Aucun',
+              rightGesture: rightGesture
+            }
+          };
+        } else {
+          if (!this.bodyAnalysis.hands) {
+            this.bodyAnalysis.hands = { left: null, right: { gesture: rightGesture } };
+          } else {
+            if (!this.bodyAnalysis.hands.right) {
+              this.bodyAnalysis.hands.right = { gesture: rightGesture };
+            } else {
+              this.bodyAnalysis.hands.right.gesture = rightGesture;
+            }
+          }
+          
+          if (this.bodyAnalysis.bodyMetrics) {
+            this.bodyAnalysis.bodyMetrics.rightGesture = rightGesture;
+          }
+        }
+      }
+      
+      // Log the comprehensive movement analysis being prepared
+      // Log the detected movements in French as they appear in the UI
+      console.log('🎯 MOVEMENT DETECTED - Face:', this.getFaceExpression(), 'Hands:', this.getHandsGestures(), 'Posture:', this.getPosture());
+            
+      // Log what will be sent to backend
+      const detectionDataForBackend = this.formatHolisticResultsForBackendWithBodyAnalysis(this.lastHolisticResults, this.bodyAnalysis);
+      console.log('📤 SENDING TO BACKEND - Detection Type:', detectionDataForBackend.detection_type, 'Movement Name:', detectionDataForBackend.movement_name);
+      
     } catch (error) {
       console.error('Error in onHolisticResults animation:', error);
     }
+  }
+  
+  /**
+   * Format holistic results for backend analysis
+   */
+  private formatHolisticResultsForBackend(results: any): any {
+    if (!results) {
+      // Return minimal detection data structure with default values
+      return {
+        faceData: null,
+        poseData: null,
+        handsData: [],
+        detection_type: 'general',
+        movement_name: 'unknown',
+        timestamp: Date.now()
+      };
+    }
+    
+    const formattedData: any = {};
+    
+    // Extract face data if available
+    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+      formattedData.faceData = {
+        landmarks: this.sanitizeLandmarks(results.faceLandmarks),
+        hasFace: true,
+        // Extract expression information if available
+        expression: this.extractExpressionFromFace(results.faceLandmarks)
+      };
+      
+      // Set detection type based on available data
+      formattedData.detection_type = 'face';
+      formattedData.movement_name = formattedData.faceData.expression || 'face_detected';
+    }
+    
+    // Extract pose data if available
+    if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+      formattedData.poseData = {
+        poseLandmarks: this.sanitizeLandmarks(results.poseLandmarks),
+        hasPose: true
+      };
+      
+      // If face data wasn't detected but pose is, set type to pose
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'pose';
+        formattedData.movement_name = 'pose_detected';
+      }
+    }
+    
+    // Extract hands data if available
+    const handsData = [];
+    
+    if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+      // Use the gesture from the body analysis service if available, otherwise use local recognition
+      let gesture = 'unknown';
+      if (this.bodyAnalysis?.hands?.left?.gesture) {
+        // Preserve the original French gesture name as it appears in the UI
+        gesture = this.bodyAnalysis.hands.left.gesture;
+      } else {
+        gesture = this.recognizeHandGesture(results.leftHandLandmarks);
+      }
+      
+      handsData.push({
+        handedness: 'left',
+        landmarks: this.sanitizeLandmarks(results.leftHandLandmarks),
+        gesture: gesture,
+        hasHand: true
+      });
+      
+      // Set detection type and movement name if not already set
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'hand';
+        formattedData.movement_name = `left_${gesture}`;
+      }
+    }
+    
+    if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+      // Use the gesture from the body analysis service if available, otherwise use local recognition
+      let gesture = 'unknown';
+      if (this.bodyAnalysis?.hands?.right?.gesture) {
+        // Preserve the original French gesture name as it appears in the UI
+        gesture = this.bodyAnalysis.hands.right.gesture;
+      } else {
+        gesture = this.recognizeHandGesture(results.rightHandLandmarks);
+      }
+      
+      handsData.push({
+        handedness: 'right',
+        landmarks: this.sanitizeLandmarks(results.rightHandLandmarks),
+        gesture: gesture,
+        hasHand: true
+      });
+      
+      // If this is the first detection type detected, set it
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'hand';
+        formattedData.movement_name = `right_${gesture}`;
+      }
+      // If we already have left hand, update movement name to include both
+      else if (formattedData.detection_type === 'hand' && formattedData.movement_name.includes('left')) {
+        formattedData.movement_name = `left_${formattedData.movement_name.split('_')[1]}_right_${gesture}`;
+      }
+    }
+    
+    if (handsData.length > 0) {
+      formattedData.handsData = handsData;
+      
+      // Set detection type to hand if not already set
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'hand';
+      }
+    }
+    
+    // Set detection type priority: hand > pose > face > general
+    if (!formattedData.detection_type) {
+      if (formattedData.handsData && formattedData.handsData.length > 0) {
+        formattedData.detection_type = 'hand';
+        // Use the movement name from the first hand detected
+        if (formattedData.handsData[0].gesture) {
+          formattedData.movement_name = `${formattedData.handsData[0].handedness}_${formattedData.handsData[0].gesture}`;
+        }
+      } else if (formattedData.poseData && formattedData.poseData.hasPose) {
+        formattedData.detection_type = 'pose';
+        formattedData.movement_name = 'pose_detected';
+      } else if (formattedData.faceData && formattedData.faceData.hasFace) {
+        formattedData.detection_type = 'face';
+        // Check if face expression from body analysis is available
+        if (this.bodyAnalysis?.face && this.bodyAnalysis.bodyMetrics?.faceExpression) {
+          // Preserve the original French expression name as it appears in the UI
+          formattedData.movement_name = this.bodyAnalysis.bodyMetrics.faceExpression;
+        } else {
+          formattedData.movement_name = formattedData.faceData.expression || 'face_detected';
+        }
+      } else {
+        formattedData.detection_type = 'general';
+        formattedData.movement_name = 'general_movement';
+      }
+    }
+    
+    // Add timestamp
+    formattedData.timestamp = Date.now();
+    
+    return formattedData;
+  }
+  
+  private formatHolisticResultsForBackendWithBodyAnalysis(results: any, bodyAnalysis: any): any {
+    if (!results) {
+      // Return minimal detection data structure with default values
+      return {
+        faceData: null,
+        poseData: null,
+        handsData: [],
+        detection_type: 'general',
+        movement_name: 'unknown',
+        timestamp: Date.now()
+      };
+    }
+    
+    const formattedData: any = {};
+    
+    // Extract face data if available
+    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+      formattedData.faceData = {
+        landmarks: this.sanitizeLandmarks(results.faceLandmarks),
+        hasFace: true,
+        // Extract expression information if available
+        expression: this.extractExpressionFromFace(results.faceLandmarks)
+      };
+      
+      // Set detection type based on available data
+      formattedData.detection_type = 'face';
+      formattedData.movement_name = formattedData.faceData.expression || 'face_detected';
+    }
+    
+    // Extract pose data if available
+    if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+      formattedData.poseData = {
+        poseLandmarks: this.sanitizeLandmarks(results.poseLandmarks),
+        hasPose: true
+      };
+      
+      // If face data wasn't detected but pose is, set type to pose
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'pose';
+        formattedData.movement_name = 'pose_detected';
+      }
+    }
+    
+    // Extract hands data if available
+    const handsData = [];
+    
+    if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+      // Use the gesture from the body analysis service if available, otherwise use local recognition
+      let gesture = 'unknown';
+      if (bodyAnalysis?.hands?.left?.gesture) {
+        // Convert French gesture names to English equivalents
+        gesture = this.convertFrenchGestureToEnglish(bodyAnalysis.hands.left.gesture);
+      } else {
+        gesture = this.recognizeHandGesture(results.leftHandLandmarks);
+      }
+      
+      handsData.push({
+        handedness: 'left',
+        landmarks: this.sanitizeLandmarks(results.leftHandLandmarks),
+        gesture: gesture,
+        hasHand: true
+      });
+      
+      // Set detection type and movement name if not already set
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'hand';
+        formattedData.movement_name = `left_${gesture}`;
+      }
+    }
+    
+    if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+      // Use the gesture from the body analysis service if available, otherwise use local recognition
+      let gesture = 'unknown';
+      if (bodyAnalysis?.hands?.right?.gesture) {
+        // Convert French gesture names to English equivalents
+        gesture = this.convertFrenchGestureToEnglish(bodyAnalysis.hands.right.gesture);
+      } else {
+        gesture = this.recognizeHandGesture(results.rightHandLandmarks);
+      }
+      
+      handsData.push({
+        handedness: 'right',
+        landmarks: this.sanitizeLandmarks(results.rightHandLandmarks),
+        gesture: gesture,
+        hasHand: true
+      });
+      
+      // If this is the first detection type detected, set it
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'hand';
+        formattedData.movement_name = `right_${gesture}`;
+      }
+      // If we already have left hand, update movement name to include both
+      else if (formattedData.detection_type === 'hand' && formattedData.movement_name.includes('left')) {
+        formattedData.movement_name = `left_${formattedData.movement_name.split('_')[1]}_right_${gesture}`;
+      }
+    }
+    
+    if (handsData.length > 0) {
+      formattedData.handsData = handsData;
+      
+      // Set detection type to hand if not already set
+      if (!formattedData.detection_type) {
+        formattedData.detection_type = 'hand';
+      }
+    }
+    
+    // Set detection type priority: hand > pose > face > general
+    if (!formattedData.detection_type) {
+      if (formattedData.handsData && formattedData.handsData.length > 0) {
+        formattedData.detection_type = 'hand';
+        // Use the movement name from the first hand detected
+        if (formattedData.handsData[0].gesture) {
+          formattedData.movement_name = `${formattedData.handsData[0].handedness}_${formattedData.handsData[0].gesture}`;
+        }
+      } else if (formattedData.poseData && formattedData.poseData.hasPose) {
+        formattedData.detection_type = 'pose';
+        formattedData.movement_name = 'pose_detected';
+      } else if (formattedData.faceData && formattedData.faceData.hasFace) {
+        formattedData.detection_type = 'face';
+        // Check if face expression from body analysis is available
+        if (bodyAnalysis?.face && bodyAnalysis.bodyMetrics?.faceExpression) {
+          const expression = this.convertFrenchExpressionToEnglish(bodyAnalysis.bodyMetrics.faceExpression);
+          formattedData.movement_name = expression;
+        } else {
+          formattedData.movement_name = formattedData.faceData.expression || 'face_detected';
+        }
+      } else {
+        formattedData.detection_type = 'general';
+        formattedData.movement_name = 'general_movement';
+      }
+    }
+    
+    // Add timestamp
+    formattedData.timestamp = Date.now();
+    
+    return formattedData;
+  }
+  
+  private convertFrenchGestureToEnglish(frenchGesture: string): string {
+    const gestureMap: { [key: string]: string } = {
+      'Victoire ✌️': 'victory',
+      'Victoire': 'victory',
+      'OK 👌': 'ok',
+      'OK': 'ok',
+      'Pouce 👍': 'thumbs_up',
+      'Pouce': 'thumbs_up',
+      'Ouverte 🖐️': 'open_hand',
+      'Ouverte': 'open_hand',
+      'Poing': 'fist',
+      'Neutre': 'neutral',
+      'Inconnu': 'unknown',
+      'Thumbs up': 'thumbs_up',
+      'Peace': 'victory',
+      'Rock': 'rock_on',
+      'Point': 'point',
+      'Aucun': 'none'
+    };
+    return gestureMap[frenchGesture] || frenchGesture.toLowerCase().replace(/[\s\W]/g, '_');
+  }
+  
+  private convertFrenchExpressionToEnglish(frenchExpression: string): string {
+    const expressionMap: { [key: string]: string } = {
+      'Neutre': 'neutral',
+      'Tristesse': 'sad',
+      'Triste': 'sad',
+      'Joie': 'happy',
+      'Heureux': 'happy',
+      'Surprise': 'surprised',
+      'Peur': 'fear',
+      'Colère': 'angry',
+      'Dégoût': 'disgust',
+      'Aucun': 'none',
+      'None': 'none'
+    };
+    // Only convert if it's a known French expression, otherwise return the original
+    return expressionMap[frenchExpression] || frenchExpression;
+  }
+  
+  private sanitizeLandmarks(landmarks: any[]): any[] {
+    if (!landmarks || !Array.isArray(landmarks)) {
+      return [];
+    }
+    
+    // Normalize landmark data to prevent extremely large values
+    return landmarks.map(landmark => {
+      if (typeof landmark === 'object' && landmark !== null) {
+        return {
+          x: typeof landmark.x === 'number' ? Math.round(landmark.x * 1000) / 1000 : 0,
+          y: typeof landmark.y === 'number' ? Math.round(landmark.y * 1000) / 1000 : 0,
+          z: typeof landmark.z === 'number' ? Math.round(landmark.z * 1000) / 1000 : 0,
+          visibility: typeof landmark.visibility === 'number' ? Math.round(landmark.visibility * 1000) / 1000 : undefined
+        };
+      }
+      return landmark;
+    });
+  }
+  
+  private extractExpressionFromFace(faceLandmarks: any[]): string {
+    // Enhanced expression detection based on face landmarks
+    // This is an improved implementation
+    if (faceLandmarks && faceLandmarks.length >= 468) {  // MediaPipe face mesh has 468 points
+      // Extract key facial landmarks for expression detection
+      const leftEyeTop = faceLandmarks[159];
+      const leftEyeBottom = faceLandmarks[145];
+      const rightEyeTop = faceLandmarks[386];
+      const rightEyeBottom = faceLandmarks[374];
+      const leftMouthCorner = faceLandmarks[291];
+      const rightMouthCorner = faceLandmarks[61];
+      const upperLipTop = faceLandmarks[0];
+      const lowerLipBottom = faceLandmarks[17];
+      
+      // Calculate eye openness (distance between top and bottom eyelid)
+      const leftEyeOpenness = this.calculateDistance(leftEyeTop, leftEyeBottom);
+      const rightEyeOpenness = this.calculateDistance(rightEyeTop, rightEyeBottom);
+      
+      // Calculate mouth openness (distance between upper and lower lips)
+      const mouthOpenness = this.calculateDistance(upperLipTop, lowerLipBottom);
+      
+      // Calculate mouth curvature (horizontal distance between mouth corners)
+      const mouthWidth = Math.abs(rightMouthCorner.x - leftMouthCorner.x);
+      
+      // Calculate relative positions
+      const eyeOpenRatio = (leftEyeOpenness + rightEyeOpenness) / 2;
+      const mouthOpenRatio = mouthOpenness / mouthWidth;
+      
+      // Detect expressions based on landmark positions
+      if (mouthOpenRatio > 0.15) {  // Mouth is open
+        return 'surprised';
+      } else if (eyeOpenRatio < 0.02 && mouthOpenRatio > 0.08) {  // Eyes closed, mouth open
+        return 'laughing';
+      } else if (leftMouthCorner.y > upperLipTop.y && rightMouthCorner.y > upperLipTop.y) {  // Mouth corners down
+        return 'sad';  // tristesse
+      } else if (leftMouthCorner.y < rightMouthCorner.y - 0.02 || rightMouthCorner.y < leftMouthCorner.y - 0.02) {  // One corner up, one down
+        return 'skeptical';
+      } else if (eyeOpenRatio > 0.04 && mouthOpenRatio < 0.05 && 
+                 Math.abs(leftMouthCorner.y - rightMouthCorner.y) < 0.02) {  // Eyes open, mouth closed, corners level
+        return 'neutral';
+      } else if (leftMouthCorner.y < upperLipTop.y && rightMouthCorner.y < upperLipTop.y && 
+                 mouthOpenRatio < 0.08) {  // Mouth corners up (smile)
+        return 'happy';
+      }
+    }
+    return 'neutral'; // Default to neutral if no specific expression detected
+  }
+  
+  private recognizeHandGesture(handLandmarks: any[]): string {
+    // Enhanced gesture recognition based on hand landmarks
+    // This is an improved implementation
+    if (handLandmarks && handLandmarks.length >= 21) {
+      const thumbTip = handLandmarks[4];
+      const indexTip = handLandmarks[8];
+      const middleTip = handLandmarks[12];
+      const ringTip = handLandmarks[16];
+      const pinkyTip = handLandmarks[20];
+      const indexPIP = handLandmarks[6];  // Proximal interphalangeal joint for index
+      const middlePIP = handLandmarks[10];
+      const ringPIP = handLandmarks[14];
+      const pinkyPIP = handLandmarks[18];
+      
+      // Calculate distances for more precise detection
+      const distanceIndexTipToPalm = this.calculateDistance(indexTip, handLandmarks[0]);
+      const distanceMiddleTipToPalm = this.calculateDistance(middleTip, handLandmarks[0]);
+      const distanceRingTipToPalm = this.calculateDistance(ringTip, handLandmarks[0]);
+      const distancePinkyTipToPalm = this.calculateDistance(pinkyTip, handLandmarks[0]);
+      const distanceThumbTipToPalm = this.calculateDistance(thumbTip, handLandmarks[0]);
+      
+      // Calculate distances between fingertips and PIP joints
+      const distanceIndexTipToPIP = this.calculateDistance(indexTip, indexPIP);
+      const distanceMiddleTipToPIP = this.calculateDistance(middleTip, middlePIP);
+      const distanceRingTipToPIP = this.calculateDistance(ringTip, ringPIP);
+      const distancePinkyTipToPIP = this.calculateDistance(pinkyTip, pinkyPIP);
+      
+      // Victory sign: index and middle finger extended, ring and pinky folded
+      if (indexTip && middleTip && indexTip.y < indexPIP.y && 
+          middleTip.y < middlePIP.y && 
+          ringTip.y > ringPIP.y && pinkyTip.y > pinkyPIP.y) {
+        return 'victory';
+      }
+      
+      // Thumbs up: thumb up, other fingers curled
+      if (thumbTip && indexTip && middleTip && ringTip && pinkyTip &&
+          thumbTip.y < indexTip.y && indexTip.y > indexPIP.y && 
+          middleTip.y > middlePIP.y && ringTip.y > ringPIP.y && pinkyTip.y > pinkyPIP.y) {
+        return 'thumbs_up';
+      }
+      
+      // Peace sign (inverted): index and middle finger down, ring and pinky folded
+      if (indexTip && middleTip && ringTip && pinkyTip &&
+          indexTip.y > indexPIP.y && middleTip.y > middlePIP.y && 
+          ringTip.y > ringPIP.y && pinkyTip.y > pinkyPIP.y && 
+          Math.abs(indexTip.x - middleTip.x) < 0.05) { // Fingers close together
+        return 'peace';
+      }
+      
+      // Pointing: index finger extended, others curled
+      if (indexTip && middleTip && ringTip && pinkyTip &&
+          indexTip.y < indexPIP.y && middleTip.y > middlePIP.y && 
+          ringTip.y > ringPIP.y && pinkyTip.y > pinkyPIP.y) {
+        return 'point';
+      }
+      
+      // Rock on: index and pinky extended, others curled
+      if (indexTip && middleTip && ringTip && pinkyTip &&
+          indexTip.y < indexPIP.y && middleTip.y > middlePIP.y && 
+          ringTip.y > ringPIP.y && pinkyTip.y < pinkyPIP.y) {
+        return 'rock_on';
+      }
+      
+      // OK sign: thumb and index finger touching, others extended
+      if (thumbTip && indexTip && middleTip && ringTip && pinkyTip &&
+          distanceThumbTipToPalm < 0.05 && distanceIndexTipToPalm < 0.05 && 
+          middleTip.y < middlePIP.y && ringTip.y < ringPIP.y && pinkyTip.y < pinkyPIP.y) {
+        return 'ok';
+      }
+      
+      // Fist: all fingers curled
+      if (indexTip && middleTip && ringTip && pinkyTip &&
+          indexTip.y > indexPIP.y && middleTip.y > middlePIP.y && 
+          ringTip.y > ringPIP.y && pinkyTip.y > pinkyPIP.y) {
+        return 'fist';
+      }
+      
+      // Open hand: all fingers extended
+      if (indexTip && middleTip && ringTip && pinkyTip &&
+          indexTip.y < indexPIP.y && middleTip.y < middlePIP.y && 
+          ringTip.y < ringPIP.y && pinkyTip.y < pinkyPIP.y) {
+        return 'open_hand';
+      }
+      
+      // Call me: thumb and pinky extended, others curled
+      if (thumbTip && pinkyTip && indexTip && middleTip && ringTip &&
+          thumbTip.y < handLandmarks[2].y && pinkyTip.y < pinkyPIP.y && 
+          indexTip.y > indexPIP.y && middleTip.y > middlePIP.y && ringTip.y > ringPIP.y) {
+        return 'call_me';
+      }
+    }
+    return 'unknown'; // Default to unknown
   }
 
   /**
@@ -1562,11 +2195,15 @@ ngOnDestroy(): void {
       label: dataLabel,
       movementType: 'active_capture',
       timestamp: Date.now(),
-      images: this.capturedImagesForSend // Send captured images
+      images: this.capturedImagesForSend.map(item => item.image), // Extract images from the objects
+      jsonData: this.capturedImagesForSend.length > 0 ? this.capturedImagesForSend[this.capturedImagesForSend.length - 1].detectionData : this.formatHolisticResultsForBackend(this.lastHolisticResults) // Use detection data from last (most recent) image or fallback to current results
     };
       
-    console.log('📡 Sending movement data:', movementDataToSend);
-      
+    // Log essential information about what's being sent
+    console.log('📡 SENDING TO BACKEND - User:', movementDataToSend.user, 'Label:', movementDataToSend.label, 'Images:', movementDataToSend.images.length);
+    console.log('📤 JSON Data - Type:', movementDataToSend.jsonData?.detection_type, 'Movement:', movementDataToSend.jsonData?.movement_name);
+    console.log('📊 Data Details - Face:', !!movementDataToSend.jsonData?.faceData, 'Hands:', !!movementDataToSend.jsonData?.handsData, 'Pose:', !!movementDataToSend.jsonData?.poseData);
+        
     // Send to Django backend via document service (the only service that handles this)
     console.log('🔌 Calling documentService.uploadMovementData');
     this.documentService.uploadMovementData(movementDataToSend).subscribe({
@@ -2949,16 +3586,22 @@ ngOnDestroy(): void {
         
       // Show notification about image capture
       this.showNotification('📸 Une image a été prise', 'info');
-        
-      this.capturedImages.push(imageData);
-        
+            
+      // Store image with associated detection data
+      const imageWithDetection = {
+        image: imageData,
+        detectionData: this.formatHolisticResultsForBackendWithBodyAnalysis(this.lastHolisticResults, this.bodyAnalysis)
+      };
+            
+      this.capturedImages.push(imageWithDetection);
+            
       // Keep only the last 5 images to prevent memory issues
       if (this.capturedImages.length > 5) {
         this.capturedImages.shift();
       }
-        
+            
       // Also add to the movement-specific capture array
-      this.capturedImagesForSend.push(imageData);
+      this.capturedImagesForSend.push(imageWithDetection);
         
         
       // Keep only the last 3 images in the send array to prevent memory issues
@@ -3047,6 +3690,11 @@ ngOnDestroy(): void {
 
   // Get face expression
   getFaceExpression(): string {
+    // First check if we have bodyMetrics with expression data
+    if (this.bodyAnalysis?.bodyMetrics?.faceExpression) {
+      return this.bodyAnalysis.bodyMetrics.faceExpression;
+    }
+    
     if (!this.bodyAnalysis?.face) return 'Aucune expression';
     
     // Analyze facial landmarks to detect expressions
@@ -3093,6 +3741,59 @@ ngOnDestroy(): void {
     
     // Default to neutral if no specific expression detected
     return 'Neutre';
+  }
+  
+  getPosture(): string {
+    if (!this.bodyAnalysis?.pose || !this.bodyAnalysis.bodyMetrics) {
+      return 'Aucune posture';
+    }
+    
+    const posture = this.bodyAnalysis.bodyMetrics.posture || 'Neutre';
+    return `Posture: ${posture}`;
+  }
+  
+  getMovementAnalysis(): any {
+    // Get comprehensive movement analysis including face, hands, and pose
+    const analysis: any = {};
+    
+    // Add face analysis
+    if (this.bodyAnalysis?.face && this.bodyAnalysis.bodyMetrics) {
+      analysis.face = {
+        expression: this.bodyAnalysis.bodyMetrics.faceExpression || 'neutral',
+        landmarks: this.bodyAnalysis.face,
+        confidence: this.bodyAnalysis.faceConfidence
+      };
+    }
+    
+    // Add hands analysis
+    if (this.bodyAnalysis?.hands) {
+      analysis.hands = {
+        left: this.bodyAnalysis.hands.left ? {
+          gesture: this.bodyAnalysis.hands.left.gesture || 'none',
+          landmarks: this.bodyAnalysis.hands.left.landmarks,
+          confidence: this.bodyAnalysis.handsDetected?.left
+        } : null,
+        right: this.bodyAnalysis.hands.right ? {
+          gesture: this.bodyAnalysis.hands.right.gesture || 'none',
+          landmarks: this.bodyAnalysis.hands.right.landmarks,
+          confidence: this.bodyAnalysis.handsDetected?.right
+        } : null
+      };
+    }
+    
+    // Add pose analysis
+    if (this.bodyAnalysis?.pose) {
+      analysis.pose = {
+        posture: this.bodyAnalysis.bodyMetrics?.posture || 'neutral',
+        landmarks: this.bodyAnalysis.pose,
+        confidence: this.bodyAnalysis.poseConfidence
+      };
+    }
+    
+    // Add overall metrics
+    analysis.metrics = this.bodyAnalysis?.bodyMetrics || {};
+    
+    return analysis;
   }
   
   // Check if disgust is detected
@@ -3284,7 +3985,11 @@ ngOnDestroy(): void {
     
     return gestures.length > 0 ? gestures.join(', ') : 'Aucun geste';
   }
+  
 
+  
+
+  
   // Get system status
   getSystemStatus(): any {
     return {
@@ -3631,6 +4336,10 @@ ngOnDestroy(): void {
       
       // Load the VRM model from the specified path
       const loader = new GLTFLoader();
+      
+      // Register VRMLoaderPlugin to properly handle VRM files
+      // Using any cast to handle type mismatch between different GLTFLoader versions
+      (loader as any).register((parser: any) => new VRMLoaderPlugin(parser));
       
       console.log('Loading VRM file from /5749760313079890670.vrm');
       
@@ -4345,8 +5054,14 @@ ngOnDestroy(): void {
       // Show notification about frame capture
       this.showNotification('📸 Une image a été prise', 'info');
       
+      // Store image with associated detection data
+      const imageWithDetection = {
+        image: imageData,
+        detectionData: this.formatHolisticResultsForBackendWithBodyAnalysis(this.lastHolisticResults, this.bodyAnalysis)
+      };
+      
       // Add to the captured images array for processing
-      this.capturedImages.push(imageData);
+      this.capturedImages.push(imageWithDetection);
       
       // Keep only the last 5 images to prevent memory issues
       if (this.capturedImages.length > 5) {
@@ -4354,7 +5069,7 @@ ngOnDestroy(): void {
       }
       
       // Also add to the movement-specific capture array for backend sending
-      this.capturedImagesForSend.push(imageData);
+      this.capturedImagesForSend.push(imageWithDetection);
       
       // Keep only the last 3 images in the send array to prevent memory issues
       if (this.capturedImagesForSend.length > 3) {

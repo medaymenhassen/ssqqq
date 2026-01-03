@@ -16,7 +16,7 @@ public class CourseLesson {
     @Column(nullable = false)
     private String title;
     
-    @Column(length = 1000)
+    @Column(length = 5000000)
     private String description;
     
     @Column(name = "video_url")
@@ -28,7 +28,7 @@ public class CourseLesson {
     @Column(name = "content_title")
     private String contentTitle;
     
-    @Column(name = "content_description", length = 2000)
+    @Column(name = "content_description", length = 1000000)
     private String contentDescription;
     
     @Column(name = "display_order")

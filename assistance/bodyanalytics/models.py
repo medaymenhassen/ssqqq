@@ -1,10 +1,3 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
 
@@ -37,23 +30,23 @@ class CompanyCalendars(models.Model):
         db_table = 'company_calendars'
 
 
+
 class CourseLessons(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    animation_3d_url = models.CharField(max_length=255, blank=True, null=True)
+    content_description = models.CharField(max_length=1000000, blank=True, null=True)
+    content_title = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField()
+    description = models.CharField(max_length=5000000, blank=True, null=True)
     display_order = models.IntegerField(blank=True, null=True)
     is_service = models.BooleanField(blank=True, null=True)
     lesson_order = models.IntegerField(blank=True, null=True)
-    created_at = models.DateTimeField()
-    id = models.BigAutoField(primary_key=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
-    user = models.ForeignKey('Users', on_delete=models.CASCADE)
-    description = models.CharField(max_length=1000, blank=True, null=True)
-    content_description = models.CharField(max_length=2000, blank=True, null=True)
-    animation_3d_url = models.CharField(max_length=255, blank=True, null=True)
-    content_title = models.CharField(max_length=255, blank=True, null=True)
     title = models.CharField(max_length=255)
+    updated_at = models.DateTimeField(blank=True, null=True)
     video_url = models.CharField(max_length=255, blank=True, null=True)
+    user = models.ForeignKey('Users', on_delete=models.CASCADE)
 
     class Meta:
-
         db_table = 'course_lessons'
 
 
@@ -106,7 +99,7 @@ class Data(models.Model):
     user = models.ForeignKey('Users', on_delete=models.CASCADE)
     video_url = models.CharField(max_length=255, blank=True, null=True)
     image_data = models.TextField(blank=True, null=True)  # This field type is a guess.
-    json_data = models.TextField(blank=True, null=True)
+    json_data = models.JSONField(blank=True, null=True)
 
     class Meta:
 
@@ -462,4 +455,3 @@ class Users(models.Model):
 
     class Meta:
         db_table = 'users'
-

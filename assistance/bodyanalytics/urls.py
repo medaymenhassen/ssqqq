@@ -40,6 +40,7 @@ urlpatterns = [
     path('course-lessons/', DjangoCourseLessonListView.as_view(), name='django-course-lessons-list'),
     path('course-lessons/<int:lesson_id>/', DjangoCourseLessonDetailView.as_view(), name='django-course-lesson-detail'),
     path('test-questions/', DjangoTestQuestionListView.as_view(), name='django-test-questions-list'),
+
     path('test-questions/test/<int:test_id>/', DjangoTestQuestionByTestView.as_view(), name='django-test-questions-by-test'),
     path('user-offers/<int:user_offer_id>/approve/', ApproveUserOfferView.as_view(), name='django-approve-user-offer'),
     path('user-offers/<int:user_offer_id>/reject/', RejectUserOfferView.as_view(), name='django-reject-user-offer'),

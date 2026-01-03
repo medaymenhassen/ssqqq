@@ -51,14 +51,20 @@ class CreateMovementRecordView(APIView):
             # Parse JSON data
             data = request.data
             
+            # Get user from either userId field or user field
+            user_id = data.get('userId') or data.get('user')
+            
             # Create the main movement record
             movement_record_data = {
-                'user': data.get('userId'),
+                'user_id': user_id,
                 'image_data': data.get('imageData'),
                 'video_url': data.get('videoUrl'),
                 'json_data': data.get('jsonData'),
                 'movement_detected': data.get('movementDetected', False)
             }
+            
+            # Remove None values to avoid validation errors
+            movement_record_data = {k: v for k, v in movement_record_data.items() if v is not None}
             
             serializer = MovementRecordCreateSerializer(data=movement_record_data)
             if serializer.is_valid():
@@ -129,60 +135,22 @@ class EVFAQView(APIView):
 
     
     def save_pose_data(self, movement_record, pose_data):
-        if not pose_data:
-            return
-            
-        for body_part, data in pose_data.items():
-            if data and 'position' in data:
-                position = data['position']
-                try:
-                    PoseData.objects.create(
-                        movement_record=movement_record,
-                        body_part=body_part,
-                        x_position=position.get('x', 0),
-                        y_position=position.get('y', 0),
-                        z_position=position.get('z'),
-                        confidence=data.get('confidence')
-                    )
-                except NameError:
-                    # PoseData model doesn't exist, skip saving
-                    pass
+        # Backend does not analyze pose data
+        # All analysis is done in frontend and sent to backend
+        # This method does nothing as per requirements
+        pass
     
     def save_face_data(self, movement_record, face_data):
-        if not face_data:
-            return
-            
-        try:
-            FaceData.objects.create(
-                movement_record=movement_record,
-                eye_openness_left=face_data.get('eyeOpenness', {}).get('left'),
-                eye_openness_right=face_data.get('eyeOpenness', {}).get('right'),
-                mouth_openness=face_data.get('mouthOpenness'),
-                head_position_x=face_data.get('headPosition', {}).get('position', {}).get('x'),
-                head_position_y=face_data.get('headPosition', {}).get('position', {}).get('y'),
-                head_position_z=face_data.get('headPosition', {}).get('position', {}).get('z')
-            )
-        except NameError:
-            # FaceData model doesn't exist, skip saving
-            pass
+        # Face detection and detailed face data processing happens in frontend
+        # Backend only receives and stores the processed data
+        # No FaceData model exists, so this functionality is handled differently
+        pass
     
     def save_hand_data(self, movement_record, hands_data):
-        if not hands_data:
-            return
-            
-        for hand_side, data in hands_data.items():
-            if data:
-                try:
-                    HandData.objects.create(
-                        movement_record=movement_record,
-                        hand=hand_side.upper(),
-                        gesture=data.get('gesture'),
-                        confidence=data.get('confidence'),
-                        landmarks=data.get('landmarks')
-                    )
-                except NameError:
-                    # HandData model doesn't exist, skip saving
-                    pass
+        # Backend does not analyze hand data
+        # All analysis is done in frontend and sent to backend
+        # This method does nothing as per requirements
+        pass
 
 
 class UserMovementRecordsView(APIView):
@@ -206,17 +174,6 @@ class UploadMovementDataView(APIView):
     
     def post(self, request):
         try:
-            # ========== DEBUG: PRINT WHAT DJANGO RECEIVES ==========
-            print(f"DEBUG: Request method: {request.method}")
-            print(f"DEBUG: Request data keys: {list(request.data.keys()) if hasattr(request, 'data') else 'No data attribute'}")
-            print(f"DEBUG: Request FILES: {list(request.FILES.keys()) if hasattr(request, 'FILES') else 'No FILES attribute'}")
-            print(f"DEBUG: Raw user field: {request.data.get('user')}")
-            print(f"DEBUG: Raw label field: {request.data.get('label')}")
-            print(f"DEBUG: Raw movementType field: {request.data.get('movementType')}")
-            print(f"DEBUG: Raw timestamp field: {request.data.get('timestamp')}")
-            print(f"DEBUG: Raw jsonData field: {request.data.get('jsonData')}")
-            print(f"DEBUG: Raw images field: {request.FILES.get('images')}")
-            
             # ========== 1. EXTRAIRE LES MÉTADONNÉES ==========
             user_id = request.data.get('user')
             # Check if user_id is provided in request data
@@ -262,34 +219,220 @@ class UploadMovementDataView(APIView):
             
             # ========== 4. CRÉER LE MOUVEMENT RECORD (SIMPLIFIED) ==========
             # Create with minimal data to avoid database column type issues
-            movement_record = MovementRecord.objects.create(
-                user=user,
-                timestamp=timezone.now(),
-                movement_detected=True,
-                created_at=timezone.now(),  # Set required field
-                # Skip json_data for now to avoid OID type error
-                # json_data field will be handled separately if needed
-            )
+            # Note: json_data field is OID type, so we won't store JSON in it to avoid errors
+            # However, we'll extract essential information for image organization
+            essential_json_data = {}
+            if json_data:
+                # Extract only the key information needed for movement classification
+                essential_json_data['detection_type'] = json_data.get('detection_type', 'general')
+                essential_json_data['movement_name'] = json_data.get('movement_name', 'general_movement')
+                essential_json_data['timestamp'] = json_data.get('timestamp')
+                essential_json_data['hasFace'] = 'faceData' in json_data and json_data['faceData'] is not None
+                essential_json_data['hasPose'] = 'poseData' in json_data and json_data['poseData'] is not None
+                essential_json_data['hasHands'] = 'handsData' in json_data and json_data['handsData'] is not None
+                
+                # Add expression or gesture info if available
+                if json_data.get('faceData') and 'expression' in json_data['faceData']:
+                    essential_json_data['expression'] = json_data['faceData']['expression']
+                
+                if json_data.get('handsData'):
+                    # Extract hand gesture info
+                    hands_info = []
+                    for hand in json_data['handsData']:
+                        hands_info.append({
+                            'handedness': hand.get('handedness'),
+                            'gesture': hand.get('gesture')
+                        })
+                    essential_json_data['hands_info'] = hands_info
             
-            # Skip json_data update due to OID type issue in database
-            # The json data is available but not saved to avoid the database error
-            # This allows the basic functionality to work
+            # Create the json_data_dict first
             json_data_dict = {
                 'label': label,
                 'movement_type': movement_type,
                 'original_timestamp': timestamp_str,
-                'pose_data': json_data.get('poseData'),
-                'face_data': json_data.get('faceData'),
-                'hands_data': json_data.get('handsData'),
-                'confidence': json_data.get('confidence'),
-                'body_metrics': json_data.get('bodyMetrics')
+                'image_urls': [],  # Will be populated after image saving
+                'image_order': 0,  # Will be set during image processing
+                'detected_movements': {
+                    'detection_type': json_data.get('detection_type', 'general'),
+                    'movement_name': json_data.get('movement_name', 'general_movement'),
+                    'hasFace': 'faceData' in json_data and json_data['faceData'] is not None,
+                    'hasPose': 'poseData' in json_data and json_data['poseData'] is not None,
+                    'hasHands': 'handsData' in json_data and json_data['handsData'] is not None,
+                    'confidence': json_data.get('confidence'),
+                    'body_metrics': json_data.get('bodyMetrics'),
+                }
             }
-            # For now, we just store the JSON data in memory and don't save to database
-            # due to the OID type issue with the json_data column
             
-            # ========== 5. TRAITER LES IMAGES ==========
+            # ========== 5. TRAITER LES IMAGES (Before creating record) ==========
             images = request.FILES.getlist('images')
             image_urls = []
+            
+            # Extract movement type and name from the JSON data for the entire batch
+            # This ensures all images in the batch use the same detection type
+            detection_type = 'general'
+            movement_name = 'general_movement'
+            
+            print(f"RECEIVED: Raw json_data keys: {list(json_data.keys()) if isinstance(json_data, dict) else 'Not a dict'}")
+            
+            # Log basic information about the received data
+            if isinstance(json_data, dict):
+                print(f"RECEIVED: faceData present: {'faceData' in json_data}")
+                print(f"RECEIVED: handsData present: {'handsData' in json_data}")
+                print(f"RECEIVED: poseData present: {'poseData' in json_data}")
+                print(f"RECEIVED: detection_type: {json_data.get('detection_type', 'None')}")
+                print(f"RECEIVED: movement_name: {json_data.get('movement_name', 'None')}")
+            
+            if json_data and isinstance(json_data, dict):
+                # Try various possible field names that Angular might send
+                # Prioritize explicit detection fields over generic ones
+                # Get initial values from the main data fields
+                initial_detection_type = (
+                    json_data.get('detection_type') or
+                    json_data.get('detectionType') or
+                    json_data.get('type') or
+                    json_data.get('movementType') or
+                    json_data.get('movement_type') or
+                    json_data.get('gesture') or  # This might be the actual gesture name
+                    'general'
+                )
+                
+                initial_movement_name = (
+                    json_data.get('detectedGesture') or      # Most specific - actual detected gesture
+                    json_data.get('detectedExpression') or   # Most specific - actual detected expression
+                    json_data.get('detected_movement') or    # Most specific - actual detected movement
+                    json_data.get('handGesture') or          # Hand-specific gesture name
+                    json_data.get('faceExpression') or       # Face-specific expression name
+                    json_data.get('hand_gesture') or         # Hand-specific gesture name
+                    json_data.get('face_expression') or      # Face-specific expression name
+                    json_data.get('movement_name') or
+                    json_data.get('movementName') or
+                    json_data.get('expression') or
+                    json_data.get('gesture') or
+                    json_data.get('action') or
+                    json_data.get('movement') or
+                    json_data.get('pose') or
+                    'general_movement'
+                )
+                
+                # Initialize with initial values but allow refinement
+                detection_type = initial_detection_type
+                movement_name = initial_movement_name
+                
+                print(f"DEBUG: Initial values - detection_type: {detection_type}, movement_name: {movement_name}")
+                
+                print(f"DEBUG: Initial detection_type: {detection_type}, movement_name: {movement_name}")
+                
+                # Only allow refinement if initial values are generic
+                should_refine_detection_type = detection_type in ['general', 'active_capture']
+                should_refine_movement_name = movement_name in ['general_movement', 'active_capture', 'unknown', 'neutral', 'surprised']
+                
+                # Preserve any specific movement name that comes from Angular, regardless of language
+                # If it's not a generic name, keep it as is
+                if movement_name not in ['general_movement', 'active_capture', 'unknown', 'neutral', 'general']:
+                    should_refine_movement_name = False
+                    print(f"RECEIVED: Preserving specific movement from Angular: {movement_name}")
+                
+                # Always check for specific data presence regardless of initial detection_type
+                print(f"DEBUG: Checking for specific data in json_data keys: {list(json_data.keys())}")
+                
+                # Check for face data presence and extract specific expression
+                face_data = json_data.get('faceData')
+                if face_data and face_data is not None:
+                    print(f"DEBUG: Face data detected: {type(face_data)}, keys: {list(face_data.keys()) if isinstance(face_data, dict) else 'N/A'}")
+                    # Extract facial expression from face data
+                    if isinstance(face_data, dict):
+                        # Check for emotion/expressions in face data
+                        expression = face_data.get('expression') or face_data.get('emotion') or face_data.get('gesture')
+                        # Check if expression is nested inside face_data
+                        if expression is None and 'expression' in face_data:
+                            expression = face_data['expression']
+                        elif expression is None and 'emotion' in face_data:
+                            expression = face_data['emotion']
+                        elif expression is None and 'gesture' in face_data:
+                            expression = face_data['gesture']
+                        print(f"DEBUG: Face expression found: {expression}")
+                        if expression and should_refine_movement_name:
+                            movement_name = str(expression).lower()
+                            print(f"DEBUG: Updated movement_name from face data: {movement_name}")
+                        # Only update detection_type to face if we should refine and we don't have a more specific detection already
+                        if should_refine_detection_type and detection_type in ['general']:
+                            detection_type = 'face'
+                
+                # Check for hands data presence and extract specific gesture
+                hands_data = json_data.get('handsData')
+                if hands_data and hands_data is not None and len(hands_data) > 0:
+                    print(f"DEBUG: Hands data detected: {type(hands_data)}, length: {len(hands_data) if hasattr(hands_data, '__len__') else 'N/A'}")
+                    # Only update detection_type to hand if we should refine and we don't have a more specific detection already
+                    if should_refine_detection_type and detection_type in ['general']:
+                        detection_type = 'hand'
+                    # Try to extract specific hand gesture, regardless of current movement_name
+                    if isinstance(hands_data, list) and len(hands_data) > 0:
+                        first_hand = hands_data[0]
+                        if isinstance(first_hand, dict):
+                            # Look for gesture, action, or expression in hand data
+                            gesture = first_hand.get('gesture') or first_hand.get('action') or first_hand.get('movement')
+                            handedness = first_hand.get('handedness', '')
+                            print(f"DEBUG: Hand gesture found: {gesture}, handedness: {handedness}")
+                            if gesture and should_refine_movement_name:
+                                movement_name = str(gesture).lower()
+                                print(f"DEBUG: Updated movement_name from hand data: {movement_name}")
+                            else:
+                                # Try to get handedness and gesture
+                                if handedness and should_refine_movement_name:
+                                    movement_name = f"{handedness}_gesture"
+                                    print(f"DEBUG: Updated movement_name from handedness: {movement_name}")
+                                else:
+                                    movement_name = 'hand_gesture'
+                    elif isinstance(hands_data, dict):
+                        # If it's a dict, check for gesture
+                        gesture = hands_data.get('gesture') or hands_data.get('action') or hands_data.get('movement')
+                        print(f"DEBUG: Hand gesture found: {gesture}")
+                        if gesture and should_refine_movement_name:
+                            movement_name = str(gesture).lower()
+                            print(f"DEBUG: Updated movement_name from hand data: {movement_name}")
+                        else:
+                            movement_name = 'hand_gesture'
+                    else:
+                        movement_name = 'hand_gesture'
+                
+                # Check for pose data presence and extract specific pose
+                pose_data = json_data.get('poseData')
+                if pose_data and pose_data is not None and len(pose_data) > 0:
+                    print(f"DEBUG: Pose data detected: {type(pose_data)}, length: {len(pose_data) if hasattr(pose_data, '__len__') else 'N/A'}")
+                    # Only update detection_type to pose if we should refine and we don't have a more specific detection already
+                    if should_refine_detection_type and detection_type in ['general']:
+                        detection_type = 'pose'
+                    # Try to extract specific pose from pose data, regardless of current movement_name
+                    if isinstance(pose_data, dict):
+                        # Look for pose name, action, or movement in pose data
+                        pose_name = pose_data.get('pose') or pose_data.get('action') or pose_data.get('movement')
+                        print(f"DEBUG: Pose name found: {pose_name}")
+                        if pose_name and should_refine_movement_name:
+                            movement_name = str(pose_name).lower()
+                            print(f"DEBUG: Updated movement_name from pose data: {movement_name}")
+                        # Only default to 'body_pose' if we should refine and we don't have a more specific movement_name already
+                        elif should_refine_movement_name and movement_name in ['general_movement', 'active_capture', 'unknown', 'neutral']:
+                            movement_name = 'body_pose'
+                    # If pose_data is not a dict but we have pose data, default to 'body_pose'
+                    elif should_refine_movement_name and movement_name in ['general_movement', 'active_capture', 'unknown', 'neutral']:
+                        movement_name = 'body_pose'
+            
+            print(f"DEBUG: Final detection_type: {detection_type}, movement_name: {movement_name}")
+            
+            # Log the final processed result
+            print(f"PROCESSED: Final detection_type: {detection_type}, movement_name: {movement_name}")
+            
+            # Set subcategory based on detection type
+            subcategory = detection_type
+            
+            # Clean names for use in file paths
+            # Replace special characters and spaces
+            import re
+            detection_type = re.sub(r'[^a-zA-Z0-9_]', '_', detection_type.lower())
+            subcategory = re.sub(r'[^a-zA-Z0-9_]', '_', subcategory.lower())
+            movement_name = re.sub(r'[^a-zA-Z0-9_]', '_', movement_name.lower())
+            
+            print(f"DEBUG: After cleaning - detection_type: {detection_type}, subcategory: {subcategory}, movement_name: {movement_name}")
             
             for i, image in enumerate(images):
                 # Limiter le nombre d'images traitées par requête
@@ -300,12 +443,11 @@ class UploadMovementDataView(APIView):
                     # Générer un nom de fichier unique
                     timestamp_ms = int(timezone.now().timestamp() * 1000)
                     
-                    # Format: date/userid/movement_type/images
-                    date_str = timezone.now().strftime('%Y-%m-%d')  # Format: 2025-12-27
-                    user_id_for_path = movement_record.user.id
-                    movement_type_for_path = json_data_dict.get('movement_type', 'general')
+                    # Simply use the movement information received from frontend
+                    # Backend does not analyze movements, only organizes based on received data
                     
-                    filename = f"movement_images/{date_str}/{user_id_for_path}/{movement_type_for_path}/{i}_{timestamp_ms}_{image.name}"
+                    # Format: active_capture/detection_type/subcategory/movement_name/images
+                    filename = f"active_capture/{detection_type}/{subcategory}/{movement_name}/{i}_{timestamp_ms}_{image.name}"
                     
                     # Sauvegarder l'image
                     path = default_storage.save(filename, ContentFile(image.read()))
@@ -314,7 +456,88 @@ class UploadMovementDataView(APIView):
                     
                 except Exception as e:
                     print(f"Error saving image: {str(e)}")
+                    # Continuer avec les autres images même si une échoue
                     continue
+            
+            # Update json_data_dict with the processed image information
+            json_data_dict['image_urls'] = image_urls
+            json_data_dict['image_order'] = len(image_urls) - 1 if image_urls else 0
+            
+            # Check if there's an existing session record for this user with the same label/timestamp
+            # This allows grouping multiple captures from the same session
+            # Use text-based search instead of JSON operators
+            existing_record = MovementRecord.objects.filter(
+                user=user,
+                json_data__icontains=label  # Look for records containing the same label in the text
+            ).order_by('-created_at').first()
+            
+            # If we find an existing record from the same session, update it instead of creating a new one
+            if existing_record:
+                # Load existing JSON data
+                try:
+                    import ast
+                    # Try to parse as JSON, fallback to literal_eval if needed
+                    try:
+                        existing_json_data = json.loads(existing_record.json_data) if existing_record.json_data else {}
+                    except (json.JSONDecodeError, TypeError):
+                        existing_json_data = ast.literal_eval(existing_record.json_data) if existing_record.json_data else {}
+                except:
+                    existing_json_data = {}
+                
+                # Merge the new image data with existing ones
+                # Create new image entries with landmarks and movement data for each image
+                for i, image_url in enumerate(image_urls):
+                    # Create a data entry for each image with its landmarks and movements
+                    image_data_entry = {
+                        'image_url': image_url,
+                        'timestamp': timestamp_str,
+                        'detected_movements': json_data_dict.get('detected_movements', {}),
+                        # Include landmark data if available in the original json_data
+                        'landmarks': {
+                            'face': json_data.get('faceData', None),
+                            'pose': json_data.get('poseData', None),
+                            'hands': json_data.get('handsData', None)
+                        } if json_data else {}
+                    }
+                    
+                    # Add this image data to existing entries
+                    if 'image_data' not in existing_json_data:
+                        existing_json_data['image_data'] = []
+                    existing_json_data['image_data'].append(image_data_entry)
+                
+                # Update the existing record with merged data
+                try:
+                    existing_record.json_data = json.dumps(existing_json_data, ensure_ascii=False, separators=(',', ':'), default=str)
+                    existing_record.save()
+                    movement_record = existing_record
+                except Exception as e:
+                    print(f"Error updating json_data in existing movement record: {e}")
+                    # If update fails, still use the existing record
+                    movement_record = existing_record
+            else:
+                # Create movement record with the fully populated json_data_dict
+                # The json_data_dict now includes actual image URLs, count, and detected movements
+                # Handle field type by converting to JSON string first
+                try:
+                    # Convert the dictionary to a JSON string for storage
+                    json_data_str = json.dumps(json_data_dict, ensure_ascii=False, separators=(',', ':'), default=str)
+                    movement_record = MovementRecord.objects.create(
+                        user=user,
+                        timestamp=timezone.now(),
+                        movement_detected=True,
+                        created_at=timezone.now(),  # Set required field
+                        json_data=json_data_str  # Store as JSON string with actual image URLs
+                    )
+                except Exception as e:
+                    # If json_data field type doesn't accept the JSON, create without it
+                    print(f"Error saving json_data to movement record: {e}")
+                    movement_record = MovementRecord.objects.create(
+                        user=user,
+                        timestamp=timezone.now(),
+                        movement_detected=True,
+                        created_at=timezone.now(),  # Set required field
+                        json_data=None  # Fallback to None if can't store the dict
+                    )
             
             # ========== 6. RÉPONDRE ==========
             return Response({
@@ -338,30 +561,10 @@ class UploadMovementDataView(APIView):
     # ========== HELPER METHODS ==========
     
     def _save_pose_data(self, movement_record, pose_data):
-        """Sauvegarder les données de pose détaillées"""
-        if not pose_data or not isinstance(pose_data, dict):
-            return
-        
-        for body_part, data in pose_data.items():
-            try:
-                if data and isinstance(data, dict) and 'position' in data:
-                    position = data.get('position', {})
-                    
-                    # Check if PoseData model exists before trying to create
-                    try:
-                        PoseData.objects.create(
-                            movement_record=movement_record,
-                            body_part=str(body_part),
-                            x_position=float(position.get('x', 0)),
-                            y_position=float(position.get('y', 0)),
-                            z_position=float(position.get('z')) if position.get('z') is not None else None,
-                            confidence=float(data.get('confidence', 0)) if data.get('confidence') else None
-                        )
-                    except NameError:
-                        # PoseData model doesn't exist, skip saving
-                        pass
-            except Exception as e:
-                continue
+        # Backend does not analyze pose data
+        # All analysis is done in frontend and sent to backend
+        # This method does nothing as per requirements
+        pass
 
 
 # ========== DJANGO AUTHENTICATION VIEWS ==========
@@ -680,6 +883,9 @@ class DjangoTestQuestionByTestView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
 class ApproveUserOfferView(APIView):
     def put(self, request, user_offer_id):
         try:
@@ -730,49 +936,13 @@ class RejectUserOfferView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _save_face_data(self, movement_record, face_data):
-        """Sauvegarder les données de face détaillées"""
-        if not face_data or not isinstance(face_data, dict):
-            return
-        
-        try:
-            eye_openness = face_data.get('eyeOpenness', {})
-            head_position = face_data.get('headPosition', {}).get('position', {})
-            
-            # Check if FaceData model exists before trying to create
-            try:
-                FaceData.objects.create(
-                    movement_record=movement_record,
-                    eye_openness_left=float(eye_openness.get('left')) if eye_openness.get('left') is not None else None,
-                    eye_openness_right=float(eye_openness.get('right')) if eye_openness.get('right') is not None else None,
-                    mouth_openness=float(face_data.get('mouthOpenness')) if face_data.get('mouthOpenness') is not None else None,
-                    head_position_x=float(head_position.get('x')) if head_position.get('x') is not None else None,
-                    head_position_y=float(head_position.get('y')) if head_position.get('y') is not None else None,
-                    head_position_z=float(head_position.get('z')) if head_position.get('z') is not None else None
-                )
-            except NameError:
-                # FaceData model doesn't exist, skip saving
-                pass
-        except Exception as e:
-            pass
+        # Backend does not analyze face data
+        # All analysis is done in frontend and sent to backend
+        # This method does nothing as per requirements
+        pass
     
     def _save_hand_data(self, movement_record, hands_data):
-        """Sauvegarder les données de mains détaillées"""
-        if not hands_data or not isinstance(hands_data, dict):
-            return
-        
-        for hand_side, data in hands_data.items():
-            try:
-                if data and isinstance(data, dict):
-                    # Check if HandData model exists before trying to create
-                    try:
-                        HandData.objects.create(
-                            movement_record=movement_record,
-                            hand=str(hand_side).upper(),
-                            gesture=str(data.get('gesture')) if data.get('gesture') else None,
-                            confidence=float(data.get('confidence')) if data.get('confidence') else None,
-                        )
-                    except NameError:
-                        # HandData model doesn't exist, skip saving
-                        pass
-            except Exception as e:
-                continue
+        # Backend does not analyze hand data
+        # All analysis is done in frontend and sent to backend
+        # This method does nothing as per requirements
+        pass

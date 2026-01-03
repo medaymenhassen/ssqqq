@@ -22,8 +22,7 @@ public class Data {
     @Column(name = "video_url")
     private String videoUrl;
 
-    @Lob
-    @Column(name = "json_data")
+    @Column(name = "json_data", columnDefinition = "TEXT")
     private String jsonData;
 
     @Column(name = "timestamp", nullable = false)

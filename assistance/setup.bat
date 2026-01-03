@@ -18,3 +18,11 @@ echo   python manage.py runserver
 echo.
 
 pause
+
+
+
+
+
+
+
+python manage.py migrate contenttypes admin auth sessions                   
